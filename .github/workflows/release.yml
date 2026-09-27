@@ -1,5 +1,6 @@
 # -----------------------------------------------------------------------------
-# Cut a new release — entirely from the GitHub UI, no local tooling needed.
+# Cut a new release of the Mammotion integration — entirely from the GitHub UI,
+# no local tooling needed.
 #
 # In GitHub: Actions -> Release -> "Run workflow" -> pick patch / minor / major.
 #

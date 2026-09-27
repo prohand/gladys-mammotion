@@ -1,5 +1,6 @@
 # -----------------------------------------------------------------------------
-# Build & publish the multi-architecture image.
+# Build & publish the multi-architecture image of the Mammotion integration
+# (ghcr.io/prohand/gladys-mammotion).
 #
 # Triggers:
 #   - a Git version tag (e.g. `v1.2.0`) pushed by hand -> release build;
