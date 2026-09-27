@@ -78,11 +78,10 @@ npm test               # tests unitaires (node --test)
 ## Publier
 
 1. Ajouter le topic GitHub `gladys-assistant-integration` au dépôt.
-2. Remplacer `cover.png` par une vraie image (800×534 px, ≤ 150 Ko).
-3. **Actions → Release → Run workflow** : le workflow monte la version
+2. **Actions → Release → Run workflow** : le workflow monte la version
    (`package.json` + manifeste), crée le tag et publie l'image Docker
    multi-arch sur `ghcr.io/prohand/gladys-mammotion`.
-4. Vérifier avant publication : `npx github:GladysAssistant/integration-store .`
+3. Vérifier avant publication : `npx github:GladysAssistant/integration-store .`
 
 ## Licence
 
