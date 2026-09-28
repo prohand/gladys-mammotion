@@ -3,8 +3,8 @@
   "type": "device",
   "name": "Mammotion",
   "description": {
-    "en": "Control your Mammotion robot lawn mower (Luba, Yuka): start, pause, return to dock, battery and status.",
-    "fr": "Pilotez votre robot tondeuse Mammotion (Luba, Yuka) : tonte, pause, retour à la base, batterie et état."
+    "en": "Control your Mammotion mower (Luba, Yuka): mowing, pause, return to dock, battery and status.",
+    "fr": "Pilotez votre tondeuse Mammotion (Luba, Yuka) : tonte, pause, retour à la base, batterie, état."
   },
   "version": "0.1.1",
   "docker_image": "ghcr.io/prohand/gladys-mammotion:0.1.1",
