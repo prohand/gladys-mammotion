@@ -110,9 +110,8 @@ export function buildMowerDevice(gladys, mower, config) {
         name(FEATURE.STATUS),
         DEVICE_FEATURE_CATEGORIES.TEXT,
         DEVICE_FEATURE_TYPES.TEXT.TEXT,
-        {
-          keep_history: false,
-        },
+        // Gladys requires min / max on every feature, even a text one.
+        { min: 0, max: 0, keep_history: false },
       ),
       sensor(
         FEATURE.BATTERY,
