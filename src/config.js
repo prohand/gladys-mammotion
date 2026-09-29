@@ -23,6 +23,17 @@ export const DEFAULT_CONFIG = {
   language: 'fr', // 'fr' | 'en', language of the "Status" text
 };
 
+// Gladys only accepts a few fixed device poll intervals, in MILLISECONDS
+// (1 s, 2 s, 10 s, 15 s, 30 s, 60 s). Any other value is refused with
+// "invalid poll frequency". The device is published with the closest allowed
+// value, and onPoll skips the calls that come before `poll_frequency`.
+export const GLADYS_POLL_FREQUENCIES_MS = [1000, 2000, 10000, 15000, 30000, 60000];
+
+/** Gladys device poll_frequency (ms) used for a user interval (s). */
+export function devicePollFrequency(seconds) {
+  return seconds < 60 ? 30_000 : 60_000;
+}
+
 function clampPollFrequency(value) {
   const seconds = Number(value);
   if (!Number.isFinite(seconds)) {

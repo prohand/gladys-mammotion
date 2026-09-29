@@ -9,7 +9,8 @@
 //   - Battery         battery %  + Charging binary
 //   - Blade height    mm
 //   - Total mowing time (h) and total distance (km)
-// Values are refreshed by polling, every `poll_frequency` seconds.
+// Values are refreshed by polling, every `poll_frequency` seconds (Gladys
+// calls onPoll every 30 or 60 s, index.js skips the calls that come too early).
 // -----------------------------------------------------------------------------
 
 import {
@@ -25,6 +26,7 @@ import {
   isPaused,
   workModeLabel,
 } from '../mammotion/telemetry.js';
+import { devicePollFrequency } from '../config.js';
 
 export const DEVICE_TYPE = 'mower';
 
@@ -77,8 +79,9 @@ export function buildMowerDevice(gladys, mower, config) {
   return {
     name: mower.name,
     external_id: ids.device,
-    // Gladys calls onPoll for this device at this interval (seconds).
-    poll_frequency: config.poll_frequency,
+    // Gladys calls onPoll for this device at this interval. It must be one of
+    // the values Gladys accepts, in milliseconds (see devicePollFrequency).
+    poll_frequency: devicePollFrequency(config.poll_frequency),
     features: [
       {
         name: name(FEATURE.MOWING),

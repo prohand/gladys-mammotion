@@ -35,12 +35,16 @@ const gladys = new GladysIntegration();
 const REFRESH_AFTER_COMMAND_MS = 10_000;
 // Delay before retrying a failed cloud initialization.
 const INIT_RETRY_MS = 5 * 60_000;
+// Margin for the Gladys scheduler jitter when skipping early polls.
+const POLL_MARGIN_MS = 5_000;
 
 // Current configuration (hot-reloaded via onConfigUpdated).
 let config = normalizeConfig();
 let client = null;
 let initRetryTimer = null;
 const refreshTimers = new Set();
+// Last poll time of each mower (iotId -> ms), to honor poll_frequency.
+const lastPollAt = new Map();
 
 function getClient() {
   if (!client || client.email !== config.email || client.password !== config.password) {
@@ -70,6 +74,7 @@ async function refreshMowers() {
 }
 
 async function pollMower(mower) {
+  lastPollAt.set(mower.iotId, Date.now());
   const status = await getClient().getStatus(mower);
   rememberWorkMode(mower, status.workMode);
   logger.debug(`${mower.name}: ${JSON.stringify(status)}`);
@@ -132,11 +137,17 @@ gladys.onScanRequest(async () => {
   await refreshMowers();
 });
 
-// --- Polling: Gladys asks to refresh a mower (every poll_frequency s) -------
+// --- Polling: Gladys asks to refresh a mower (every 30 or 60 s) -------------
 gladys.onPoll(async (device) => {
   const mower = findMowerByDevice(gladys, device);
   if (!mower) {
     logger.debug(`onPoll ignored (unknown mower) for ${device.external_id}`);
+    return;
+  }
+  // Gladys polls at most every 60 s: skip the calls that come before the
+  // interval chosen by the user (up to 3600 s).
+  const elapsed = Date.now() - (lastPollAt.get(mower.iotId) ?? 0);
+  if (elapsed < config.poll_frequency * 1000 - POLL_MARGIN_MS) {
     return;
   }
   try {
