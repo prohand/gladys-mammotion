@@ -26,9 +26,13 @@ const yuka = { iotId: 'iot-yuka-1', name: 'Yuka', productKey: 'a1kT0TlYEza', dev
 
 const feature = (device, key) => device.features.find((f) => f.external_id.endsWith(`:${key}`));
 
-test('the mower device carries the poll_frequency from the config', () => {
+test('the mower device uses a poll_frequency accepted by Gladys (ms)', () => {
   const device = buildMowerDevice(gladys, luba, config);
-  assert.equal(device.poll_frequency, 90);
+  assert.equal(device.poll_frequency, 60_000);
+  assert.equal(
+    buildMowerDevice(gladys, luba, normalizeConfig({ poll_frequency: 30 })).poll_frequency,
+    30_000,
+  );
   assert.equal(device.name, 'Luba 2');
   assert.equal(device.external_id, 'mower:iot-luba-1');
 });

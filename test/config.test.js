@@ -1,6 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizeConfig, DEFAULT_CONFIG, hasCredentials } from '../src/config.js';
+import {
+  normalizeConfig,
+  DEFAULT_CONFIG,
+  devicePollFrequency,
+  GLADYS_POLL_FREQUENCIES_MS,
+  hasCredentials,
+} from '../src/config.js';
 
 test('normalizeConfig returns the defaults when called with no argument', () => {
   assert.deepEqual(normalizeConfig(), DEFAULT_CONFIG);
@@ -33,4 +39,12 @@ test('hasCredentials needs both email and password', () => {
   assert.equal(hasCredentials(normalizeConfig()), false);
   assert.equal(hasCredentials(normalizeConfig({ email: 'a@b.c' })), false);
   assert.equal(hasCredentials(normalizeConfig({ email: 'a@b.c', password: 'x' })), true);
+});
+
+test('the device poll frequency is always a value Gladys accepts', () => {
+  for (const seconds of [30, 45, 59, 60, 90, 600, 3600]) {
+    const ms = devicePollFrequency(seconds);
+    assert.ok(GLADYS_POLL_FREQUENCIES_MS.includes(ms), `${seconds} s -> ${ms} ms`);
+    assert.ok(ms <= seconds * 1000, 'Gladys polls at least as often as asked');
+  }
 });
