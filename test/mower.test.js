@@ -53,6 +53,14 @@ test('feature external_ids are unique', () => {
   assert.equal(new Set(ids).size, ids.length);
 });
 
+test('every feature has min and max (Gladys refuses the device otherwise)', () => {
+  const device = buildMowerDevice(gladys, luba, config);
+  for (const f of device.features) {
+    assert.equal(typeof f.min, 'number', `${f.external_id} has no min`);
+    assert.equal(typeof f.max, 'number', `${f.external_id} has no max`);
+  }
+});
+
 test('a mowing snapshot turns the mowing switch ON', () => {
   const states = buildMowerStates(
     gladys,
