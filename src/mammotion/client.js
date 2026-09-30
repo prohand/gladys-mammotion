@@ -6,7 +6,9 @@
 //     access token): login, device list, commands for recent firmwares;
 //   - the Aliyun IoT gateway (see aliyun.js): properties and commands for most
 //     Luba / Yuka mowers.
-// This client hides both: listMowers(), getStatus(mower), sendCommand(...).
+// Mowers that are not bound on Aliyun ("user device not bind") push their
+// state on the Mammotion MQTT broker instead (see mqtt.js).
+// This client hides all that: listMowers(), getStatus(mower), sendCommand(...).
 // Sessions are opened lazily and renewed on expiry or on an auth error.
 // -----------------------------------------------------------------------------
 
@@ -15,6 +17,7 @@ import { createLogger } from '@gladysassistant/integration-sdk';
 import { assertAliyunOk, callAliyunApi, createAliyunSession } from './aliyun.js';
 import { buildTaskControlContent } from './commands.js';
 import { HttpError, requestJson } from './http.js';
+import { MammotionMqtt } from './mqtt.js';
 import { parseProperties, toNumber } from './telemetry.js';
 
 const logger = createLogger({ name: 'mammotion' });
@@ -73,6 +76,21 @@ function buildClientId() {
   return `${Date.now()}_${suffix}_1`;
 }
 
+/** Aliyun refuses the mowers that live on the Mammotion broker. */
+export function isNotBoundError(err) {
+  return /not bind|not bound/i.test(String(err?.message ?? ''));
+}
+
+const EMPTY_STATUS = {
+  battery: null,
+  workMode: null,
+  online: null,
+  bladeHeightMm: null,
+  totalWorkHours: null,
+  totalDistanceKm: null,
+  firmware: null,
+};
+
 export function isRtkBaseStation(entry) {
   const name = `${entry.name ?? ''} ${entry.deviceName ?? ''}`.toLowerCase();
   return RTK_PRODUCT_KEYS.has(entry.productKey) || name.startsWith('rtk');
@@ -80,13 +98,14 @@ export function isRtkBaseStation(entry) {
 
 export class MammotionClient {
   /**
-   * @param {{ email: string, password: string }} credentials
+   * @param {{ email: string, password: string, onMqttUpdate?: (iotId: string) => void }} options
    */
-  constructor({ email, password }) {
+  constructor({ email, password, onMqttUpdate }) {
     this.email = email;
     this.password = password;
     this.session = null;
     this.aliyun = null;
+    this.mqtt = new MammotionMqtt(() => this.getMqttCredentials(), onMqttUpdate);
   }
 
   // --- Mammotion OAuth ------------------------------------------------------
@@ -262,6 +281,7 @@ export class MammotionClient {
       }
 
       // 3) Aliyun bindings: most Luba / Yuka mowers are only listed here.
+      let aliyunListed = false;
       try {
         const bindings = await this.aliyunCall('/uc/listBindingByAccount', '1.0.8', {
           pageSize: 100,
@@ -273,8 +293,10 @@ export class MammotionClient {
             productKey: b.productKey,
             deviceName: b.deviceName,
             status: toNumber(b.status),
+            aliyunBound: true,
           });
         }
+        aliyunListed = true;
       } catch (err) {
         if (isAuthError(err)) throw err;
         logger.warn(`Aliyun bindings unavailable: ${err.message}`);
@@ -289,6 +311,9 @@ export class MammotionClient {
           deviceName: m.deviceName || '',
           series: m.series || '',
           online: m.status === null || m.status === undefined ? null : m.status === 1,
+          // Not bound on Aliyun: the state comes from the Mammotion broker.
+          // Unknown ('') when Aliyun did not answer: getStatus() finds out.
+          cloud: m.aliyunBound ? 'aliyun' : aliyunListed ? 'mammotion' : '',
         }))
         .filter((m) => !isRtkBaseStation(m));
     });
@@ -299,6 +324,41 @@ export class MammotionClient {
    * @param {{ iotId: string }} mower
    */
   async getStatus(mower) {
+    if (mower.cloud === 'mammotion') {
+      return this.getMqttStatus(mower);
+    }
+    try {
+      return await this.getAliyunStatus(mower);
+    } catch (err) {
+      if (!isNotBoundError(err)) throw err;
+      logger.info(`${mower.name} is not on Aliyun, switching to the Mammotion broker`);
+      mower.cloud = 'mammotion';
+      return this.getMqttStatus(mower);
+    }
+  }
+
+  /** Mammotion broker: last values pushed by the mower (null fields if none yet). */
+  async getMqttStatus(mower) {
+    await this.mqtt.watch(mower);
+    return this.mqtt.getStatus(mower.iotId) ?? { ...EMPTY_STATUS };
+  }
+
+  /** Credentials of the Mammotion MQTT broker (a fresh JWT on each call). */
+  async getMqttCredentials() {
+    return this.withRetry(async () => {
+      const session = await this.ensureSession();
+      if (!session.iotDomain) {
+        throw new Error('Mammotion broker unavailable: no iot domain in the access token');
+      }
+      const data = await this.mammotionPost(`${session.iotDomain}/v1/mqtt/auth/jwt`, {});
+      if (!data?.host || !data?.jwt) {
+        throw new Error('Mammotion broker credentials missing');
+      }
+      return data;
+    });
+  }
+
+  async getAliyunStatus(mower) {
     return this.withRetry(async () => {
       const properties = await this.aliyunCall('/thing/properties/get', '1.0.0', {
         iotId: mower.iotId,
@@ -341,16 +401,23 @@ export class MammotionClient {
           });
           return;
         } catch (err) {
-          if (isAuthError(err)) throw err;
+          if (isAuthError(err) || mower.cloud === 'mammotion') throw err;
           logger.debug(`Mammotion invoke refused (${err.message}), trying the Aliyun gateway`);
         }
       }
 
+      if (mower.cloud === 'mammotion') {
+        throw new Error('Mammotion API unavailable: no iot domain in the access token');
+      }
       await this.aliyunCall('/thing/service/invoke', '1.0.5', {
         args: { content },
         identifier: 'device_protobuf_sync_service',
         iotId: mower.iotId,
       });
     });
+  }
+
+  stop() {
+    this.mqtt.stop();
   }
 }

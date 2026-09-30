@@ -128,15 +128,24 @@ test('listMowers merges the sources and drops RTK base stations', async () => {
   mockLogin();
   mockAliyun();
   on('domestic.mammotion.com', '/device-server/v1/device/list', () =>
-    json({ code: 0, data: [{ iotId: 'iot-1', deviceName: 'Luba-X', productSeries: 'Luba 2' }] }),
+    json({
+      code: 0,
+      data: [
+        { iotId: 'iot-1', deviceName: 'Luba-X', productSeries: 'Luba 2' },
+        { iotId: 'iot-2', deviceName: 'Luba-VPMBS8RA', productSeries: 'Luba' },
+      ],
+    }),
   );
   on('api-iot.mammotion.com', '/v1/user/device/page', () =>
-    json({ code: 0, data: { records: [] } }),
+    json({
+      code: 0,
+      data: { records: [{ iotId: 'iot-2', productKey: 'pk2', deviceName: 'Luba-VPMBS8RA' }] },
+    }),
   );
 
   const client = new MammotionClient({ email: 'me@example.com', password: 'pw' });
   const mowers = await client.listMowers();
-  assert.equal(mowers.length, 1);
+  assert.equal(mowers.length, 2);
   assert.deepEqual(mowers[0], {
     iotId: 'iot-1',
     name: 'Luba',
@@ -144,7 +153,45 @@ test('listMowers merges the sources and drops RTK base stations', async () => {
     deviceName: 'Luba-X',
     series: 'Luba 2',
     online: true,
+    cloud: 'aliyun',
   });
+  // Not bound on Aliyun: followed on the Mammotion broker.
+  assert.equal(mowers[1].cloud, 'mammotion');
+  assert.equal(mowers[1].productKey, 'pk2');
+});
+
+test('getStatus switches to the Mammotion broker when Aliyun says "not bind"', async () => {
+  mockLogin();
+  mockAliyun();
+  routes.unshift({
+    match: (c) => c.path === '/thing/properties/get',
+    reply: () => json({ code: 2064, message: 'user device not bind' }),
+  });
+  const client = new MammotionClient({ email: 'me@example.com', password: 'pw' });
+  const watched = [];
+  client.mqtt = {
+    watch: async (m) => watched.push(m.iotId),
+    getStatus: () => ({ battery: 80, workMode: 15, online: true }),
+  };
+  const mower = { iotId: 'iot-2', name: 'Luba', deviceName: 'dn' };
+  const status = await client.getStatus(mower);
+  assert.equal(status.battery, 80);
+  assert.equal(mower.cloud, 'mammotion');
+  assert.deepEqual(watched, ['iot-2']);
+});
+
+test('getMqttCredentials reads the broker JWT from the iot domain', async () => {
+  mockLogin();
+  on('api-iot.mammotion.com', '/v1/mqtt/auth/jwt', () =>
+    json({
+      code: 0,
+      data: { host: 'mqtts://b.example:8883', jwt: 'j', clientId: 'c', username: 'u' },
+    }),
+  );
+  const client = new MammotionClient({ email: 'me@example.com', password: 'pw' });
+  const creds = await client.getMqttCredentials();
+  assert.equal(creds.jwt, 'j');
+  assert.equal(calls.at(-1).init.headers.Authorization.startsWith('Bearer '), true);
 });
 
 test('getStatus parses the properties and asks for the connectivity', async () => {

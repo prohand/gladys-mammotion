@@ -48,7 +48,12 @@ const lastPollAt = new Map();
 
 function getClient() {
   if (!client || client.email !== config.email || client.password !== config.password) {
-    client = new MammotionClient({ email: config.email, password: config.password });
+    client?.stop();
+    client = new MammotionClient({
+      email: config.email,
+      password: config.password,
+      onMqttUpdate: (iotId) => publishPushedState(iotId).catch(() => {}),
+    });
   }
   return client;
 }
@@ -78,6 +83,38 @@ async function pollMower(mower) {
   const status = await getClient().getStatus(mower);
   rememberWorkMode(mower, status.workMode);
   logger.debug(`${mower.name}: ${JSON.stringify(status)}`);
+  const states = buildMowerStates(gladys, mower, status, config);
+  if (states.length > 0) {
+    await gladys.publishStates(states);
+  }
+}
+
+// Mowers on the Mammotion broker push their state: publish it, at most once
+// every PUSH_THROTTLE_MS per mower (a mowing mower posts very often).
+const PUSH_THROTTLE_MS = 15_000;
+const pushTimers = new Map();
+const lastPushAt = new Map();
+
+async function publishPushedState(iotId) {
+  const wait = (lastPushAt.get(iotId) ?? 0) + PUSH_THROTTLE_MS - Date.now();
+  if (wait > 0) {
+    if (!pushTimers.has(iotId)) {
+      const timer = setTimeout(() => {
+        pushTimers.delete(iotId);
+        publishPushedState(iotId).catch(() => {});
+      }, wait);
+      timer.unref?.();
+      pushTimers.set(iotId, timer);
+    }
+    return;
+  }
+  lastPushAt.set(iotId, Date.now());
+  const mower = getMowers().find((m) => m.iotId === iotId);
+  const status = client?.mqtt.getStatus(iotId);
+  if (!mower || !status) {
+    return;
+  }
+  rememberWorkMode(mower, status.workMode);
   const states = buildMowerStates(gladys, mower, status, config);
   if (states.length > 0) {
     await gladys.publishStates(states);
@@ -232,6 +269,10 @@ gladys.handleShutdown((signal) => {
     clearTimeout(timer);
   }
   refreshTimers.clear();
+  for (const timer of pushTimers.values()) {
+    clearTimeout(timer);
+  }
+  client?.stop();
 });
 
 // --- Startup -----------------------------------------------------------------

@@ -45,6 +45,10 @@ Deux boutons sont disponibles dans l'écran de configuration :
   lecture de l'état, envoi des commandes.
 - `src/mammotion/aliyun.js` : passerelle Aliyun IoT (signature des requêtes),
   encore utilisée par la plupart des Luba / Yuka.
+- `src/mammotion/mqtt.js` : broker MQTT Mammotion, pour les tondeuses qui ne
+  sont pas sur Aliyun (erreur « user device not bind »). Ces tondeuses
+  envoient elles-mêmes leur état : les valeurs arrivent quand la tondeuse les
+  publie (pas de lecture à la demande).
 - `src/mammotion/commands.js` + `protobuf.js` : commandes au format protobuf
   (`LubaMsg` → `NavTaskCtrl` : start, pause, resume, stop, dock…).
 - `src/mammotion/telemetry.js` : lecture des propriétés (batterie, état…).
