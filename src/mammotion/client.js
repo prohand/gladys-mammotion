@@ -15,7 +15,7 @@
 import { createHash, createHmac, randomInt } from 'node:crypto';
 import { createLogger } from '@gladysassistant/integration-sdk';
 import { assertAliyunOk, callAliyunApi, createAliyunSession } from './aliyun.js';
-import { buildTaskControlContent } from './commands.js';
+import { buildReportRequestContent, buildTaskControlContent } from './commands.js';
 import { HttpError, requestJson } from './http.js';
 import { MammotionMqtt } from './mqtt.js';
 import { parseProperties, toNumber } from './telemetry.js';
@@ -337,10 +337,40 @@ export class MammotionClient {
     }
   }
 
-  /** Mammotion broker: last values pushed by the mower (null fields if none yet). */
+  /**
+   * Mammotion broker: last values pushed by the mower (null fields if none yet).
+   * Also asks the mower for a fresh report: on its own it only posts its state
+   * now and then (up to an hour apart); the answer arrives on the broker
+   * within seconds and is published by the onMqttUpdate callback.
+   */
   async getMqttStatus(mower) {
     await this.mqtt.watch(mower);
+    await this.requestReport(mower).catch((err) => {
+      if (isAuthError(err)) throw err;
+      logger.warn(`Report request refused for ${mower.name}: ${err.message}`);
+    });
     return this.mqtt.getStatus(mower.iotId) ?? { ...EMPTY_STATUS };
+  }
+
+  /** Ask a mower of the Mammotion broker to push its state now. */
+  async requestReport(mower) {
+    return this.withRetry(async () => {
+      const session = await this.ensureSession();
+      if (!session.iotDomain) {
+        throw new Error('Mammotion API unavailable: no iot domain in the access token');
+      }
+      await this.mammotionInvoke(session, mower, buildReportRequestContent(session));
+    });
+  }
+
+  async mammotionInvoke(session, mower, content) {
+    await this.mammotionPost(`${session.iotDomain}/v1/mqtt/rpc/thing/service/invoke`, {
+      args: { content },
+      deviceName: mower.deviceName,
+      identifier: 'device_protobuf_sync_service',
+      iotId: mower.iotId,
+      productKey: mower.productKey,
+    });
   }
 
   /** Credentials of the Mammotion MQTT broker (a fresh JWT on each call). */
@@ -392,13 +422,7 @@ export class MammotionClient {
 
       if (session.iotDomain) {
         try {
-          await this.mammotionPost(`${session.iotDomain}/v1/mqtt/rpc/thing/service/invoke`, {
-            args: { content },
-            deviceName: mower.deviceName,
-            identifier: 'device_protobuf_sync_service',
-            iotId: mower.iotId,
-            productKey: mower.productKey,
-          });
+          await this.mammotionInvoke(session, mower, content);
           return;
         } catch (err) {
           if (isAuthError(err) || mower.cloud === 'mammotion') throw err;

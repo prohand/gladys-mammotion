@@ -174,10 +174,16 @@ test('getStatus switches to the Mammotion broker when Aliyun says "not bind"', a
     getStatus: () => ({ battery: 80, workMode: 15, online: true }),
   };
   const mower = { iotId: 'iot-2', name: 'Luba', deviceName: 'dn' };
+  on('api-iot.mammotion.com', '/v1/mqtt/rpc/thing/service/invoke', () =>
+    json({ code: 0, data: {} }),
+  );
   const status = await client.getStatus(mower);
   assert.equal(status.battery, 80);
   assert.equal(mower.cloud, 'mammotion');
   assert.deepEqual(watched, ['iot-2']);
+  // The mower is asked to push a fresh report.
+  const invoke = calls.find((c) => c.path === '/v1/mqtt/rpc/thing/service/invoke');
+  assert.equal(JSON.parse(invoke.init.body).deviceName, 'dn');
 });
 
 test('getMqttCredentials reads the broker JWT from the iot domain', async () => {

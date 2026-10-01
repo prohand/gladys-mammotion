@@ -6,12 +6,15 @@
 //
 // Topics (same as the Mammotion app, see PyMammotion transport/mqtt.py):
 //   /sys/{pk}/{dn}/thing/event/+/post        property/post = batterie, état…
+//                                            device_protobuf_msg_event = protobuf
+//                                            reports asked by requestReport()
 //   /sys/proto/{pk}/{dn}/thing/event/+/post  protobuf reports (ignored)
 //   /sys/{pk}/{dn}/app/down/thing/status     { action: "online" | "offline" }
 // -----------------------------------------------------------------------------
 
 import mqtt from 'mqtt';
 import { createLogger } from '@gladysassistant/integration-sdk';
+import { parseReport } from './report.js';
 import { parseProperties } from './telemetry.js';
 
 const logger = createLogger({ name: 'mammotion-mqtt' });
@@ -39,6 +42,13 @@ export function deviceTopics(productKey, deviceName) {
   ];
 }
 
+// property/post name -> telemetry field also carried by the protobuf reports.
+const REPORT_FIELDS = {
+  batteryPercentage: 'battery',
+  deviceState: 'workMode',
+  knifeHeight: 'bladeHeightMm',
+};
+
 function parseJson(buffer) {
   try {
     return JSON.parse(buffer.toString('utf8'));
@@ -61,7 +71,7 @@ export class MammotionMqtt {
     this.rebuildTimer = null;
     // deviceName -> { iotId, productKey }
     this.devices = new Map();
-    // iotId -> { properties: object, online: boolean|null, updatedAt: number }
+    // iotId -> { properties: object, report: object, online: boolean|null, updatedAt: number }
     this.cache = new Map();
   }
 
@@ -171,12 +181,25 @@ export class MammotionMqtt {
       entry.online = action === 'online' || action === 1;
     } else if (topic.endsWith('/property/post') && message.params) {
       Object.assign(entry.properties, message.params);
+      // Newer than the last protobuf report for these fields.
+      for (const [property, field] of Object.entries(REPORT_FIELDS)) {
+        if (message.params[property] !== undefined) {
+          delete entry.report[field];
+        }
+      }
       const iotState = message.params.iotState;
       if (iotState !== undefined) {
         entry.online = Number(iotState) === 1;
       } else {
         entry.online = true;
       }
+    } else if (topic.endsWith('/device_protobuf_msg_event/post')) {
+      const report = parseReport(message.params?.content ?? message.params?.value?.content);
+      if (!report) {
+        return;
+      }
+      Object.assign(entry.report, report);
+      entry.online = true;
     } else {
       return;
     }
@@ -188,7 +211,7 @@ export class MammotionMqtt {
   entry(iotId) {
     let entry = this.cache.get(iotId);
     if (!entry) {
-      entry = { properties: {}, online: null, updatedAt: 0 };
+      entry = { properties: {}, report: {}, online: null, updatedAt: 0 };
       this.cache.set(iotId, entry);
     }
     return entry;
@@ -200,7 +223,7 @@ export class MammotionMqtt {
     if (!entry || entry.updatedAt === 0) {
       return null;
     }
-    const status = parseProperties(entry.properties);
+    const status = { ...parseProperties(entry.properties), ...entry.report };
     if (entry.online !== null) {
       status.online = entry.online;
     }

@@ -46,11 +46,15 @@ Deux boutons sont disponibles dans l'écran de configuration :
 - `src/mammotion/aliyun.js` : passerelle Aliyun IoT (signature des requêtes),
   encore utilisée par la plupart des Luba / Yuka.
 - `src/mammotion/mqtt.js` : broker MQTT Mammotion, pour les tondeuses qui ne
-  sont pas sur Aliyun (erreur « user device not bind »). Ces tondeuses
-  envoient elles-mêmes leur état : les valeurs arrivent quand la tondeuse les
-  publie (pas de lecture à la demande).
+  sont pas sur Aliyun (erreur « user device not bind »). À chaque poll, la
+  tondeuse est invitée à envoyer son état (`todev_report_cfg`) : la réponse
+  arrive en protobuf sur le broker en quelques secondes (`report.js`).
 - `src/mammotion/commands.js` + `protobuf.js` : commandes au format protobuf
-  (`LubaMsg` → `NavTaskCtrl` : start, pause, resume, stop, dock…).
+  (`LubaMsg` → `NavTaskCtrl` : start, pause, resume, stop, dock…). Sauf la
+  Luba 1, les tondeuses reçoivent ces commandes sur leur carte de navigation
+  (`rcver` = 17).
+- `src/mammotion/report.js` : lecture des rapports protobuf (état, batterie,
+  hauteur de coupe).
 - `src/mammotion/telemetry.js` : lecture des propriétés (batterie, état…).
 - `src/devices/mower.js` : l'appareil Gladys et ses fonctionnalités.
 - `index.js` : branchement du SDK Gladys (découverte, poll, commandes, actions).

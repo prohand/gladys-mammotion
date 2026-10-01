@@ -1,6 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildTaskControlContent, MOWER_ACTIONS, receiverFor } from '../src/mammotion/commands.js';
+import {
+  buildReportRequestContent,
+  buildTaskControlContent,
+  MOWER_ACTIONS,
+  receiverFor,
+} from '../src/mammotion/commands.js';
 import { encodeVarint } from '../src/mammotion/protobuf.js';
 
 // Minimal protobuf reader, enough to check what we encode.
@@ -68,10 +73,35 @@ test('sequence numbers change between two commands', () => {
   assert.notEqual(a[5], b[5]);
 });
 
-test('Luba Pro sends navigation commands to its navigation board', () => {
+test('every mower but the Luba 1 takes navigation commands on its navigation board', () => {
+  assert.equal(receiverFor({ deviceName: 'Luba-VPMBS8RA', productKey: '' }), 17);
+  assert.equal(receiverFor({ deviceName: 'Luba-VSLKJX' }), 17);
+  assert.equal(receiverFor({ deviceName: 'Yuka-MN6ABCDE' }), 17);
   assert.equal(receiverFor({ productKey: 'a1mb8v6tnAa' }), 17);
-  assert.equal(receiverFor({ name: 'Luba Pro 5000' }), 17);
-  assert.equal(receiverFor({ productKey: 'a1iMygIwxFC', name: 'Luba 2' }), 1);
+  assert.equal(receiverFor({ productKey: 'a1iMygIwxFC' }), 17);
+  // Luba 1 (by product key) and unknown devices: main controller.
+  assert.equal(receiverFor({ productKey: 'a1UBFdq6nNz', deviceName: 'Luba-ABCDEF' }), 1);
+  assert.equal(receiverFor({}), 1);
+});
+
+test('a Luba 2 dock command goes to the navigation board', () => {
+  const content = buildTaskControlContent(
+    'dock',
+    { userAccount: '1' },
+    { deviceName: 'Luba-VPMBS8RA' },
+  );
+  assert.equal(decode(Buffer.from(content, 'base64'))[3], 17n);
+});
+
+test('a report request is an EMBED_SYS LubaMsg carrying a report_info_cfg', () => {
+  const msg = decode(Buffer.from(buildReportRequestContent({ userAccount: '42' }), 'base64'));
+  assert.equal(msg[1], 244n); // MSG_CMD_TYPE_EMBED_SYS
+  assert.equal(msg[3], 1n); // DEV_MAINCTL
+  assert.equal(msg[7], 42n);
+  const cfg = decode(decode(msg[10])[38]);
+  assert.equal(cfg[1], 0n); // RPT_START
+  assert.equal(cfg[5], 1n); // count
+  assert.deepEqual([...cfg[6]], [0, 1, 2, 3, 4]); // packed channels
 });
 
 test('an unknown command is refused', () => {

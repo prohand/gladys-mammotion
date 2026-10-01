@@ -50,3 +50,54 @@ export function bytesField(fieldNumber, value) {
 export function message(...fields) {
   return Buffer.concat(fields);
 }
+
+/**
+ * Decode one message level into { fieldNumber: [values] }. Varints come back
+ * as bigints, length-delimited fields as Buffers (decode them again for an
+ * embedded message). Fixed 32/64-bit fields are skipped. Throws on bad data.
+ * @param {Buffer} buf
+ */
+export function decodeMessage(buf) {
+  const fields = {};
+  let pos = 0;
+  const readVarint = () => {
+    let result = 0n;
+    let shift = 0n;
+    for (;;) {
+      if (pos >= buf.length) {
+        throw new Error('truncated protobuf');
+      }
+      const byte = buf[pos++];
+      result |= BigInt(byte & 0x7f) << shift;
+      if (!(byte & 0x80)) {
+        return result;
+      }
+      shift += 7n;
+    }
+  };
+  const push = (field, value) => {
+    (fields[field] ??= []).push(value);
+  };
+  while (pos < buf.length) {
+    const key = readVarint();
+    const field = Number(key >> 3n);
+    const wire = Number(key & 7n);
+    if (wire === WIRE_VARINT) {
+      push(field, readVarint());
+    } else if (wire === WIRE_LENGTH_DELIMITED) {
+      const length = Number(readVarint());
+      if (pos + length > buf.length) {
+        throw new Error('truncated protobuf');
+      }
+      push(field, buf.subarray(pos, pos + length));
+      pos += length;
+    } else if (wire === 1) {
+      pos += 8;
+    } else if (wire === 5) {
+      pos += 4;
+    } else {
+      throw new Error(`unsupported protobuf wire type ${wire}`);
+    }
+  }
+  return fields;
+}
