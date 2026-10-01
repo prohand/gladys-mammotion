@@ -154,7 +154,9 @@ export function buildMowerDevice(gladys, mower, config) {
 
 /**
  * Turn a telemetry snapshot into Gladys states (unknown values are skipped).
- * @returns {Array<{ device_feature_external_id: string, state: number | { text: string } }>}
+ * A text feature carries its value in `text`, not in `state` (Gladys rejects the whole batch
+ * otherwise).
+ * @returns {Array<{ device_feature_external_id: string, state?: number, text?: string }>}
  */
 export function buildMowerStates(gladys, mower, status, config) {
   const ids = mowerIds(gladys, mower);
@@ -164,11 +166,14 @@ export function buildMowerStates(gladys, mower, status, config) {
       states.push({ device_feature_external_id: ids.feature(key), state });
     }
   };
+  const pushText = (key, text) => {
+    states.push({ device_feature_external_id: ids.feature(key), text });
+  };
 
   const { workMode, online } = status;
   const label = workModeLabel(workMode, online, config.language);
   if (label) {
-    push(FEATURE.STATUS, { text: label });
+    pushText(FEATURE.STATUS, label);
   }
   if (workMode !== null) {
     push(FEATURE.MOWING, isMowing(workMode) ? 1 : 0);

@@ -76,7 +76,7 @@ test('a mowing snapshot turns the mowing switch ON', () => {
     config,
   );
   const byKey = Object.fromEntries(
-    states.map((s) => [s.device_feature_external_id.split(':').pop(), s.state]),
+    states.map((s) => [s.device_feature_external_id.split(':').pop(), s.text ?? s.state]),
   );
   assert.equal(byKey.mowing, 1);
   assert.equal(byKey.dock, 0);
@@ -85,7 +85,7 @@ test('a mowing snapshot turns the mowing switch ON', () => {
   assert.equal(byKey['blade-height'], 55);
   assert.equal(byKey['work-time'], 12.5);
   assert.equal(byKey.distance, 3.2);
-  assert.deepEqual(byKey.status, { text: 'En tonte' });
+  assert.equal(byKey.status, 'En tonte');
 });
 
 test('a charging mower is docked and charging', () => {
@@ -96,12 +96,12 @@ test('a charging mower is docked and charging', () => {
     normalizeConfig({ language: 'en' }),
   );
   const byKey = Object.fromEntries(
-    states.map((s) => [s.device_feature_external_id.split(':').pop(), s.state]),
+    states.map((s) => [s.device_feature_external_id.split(':').pop(), s.text ?? s.state]),
   );
   assert.equal(byKey.mowing, 0);
   assert.equal(byKey.dock, 1);
   assert.equal(byKey.charging, 1);
-  assert.deepEqual(byKey.status, { text: 'Charging' });
+  assert.equal(byKey.status, 'Charging');
 });
 
 test('an offline mower shows "Hors ligne" and unknown values are skipped', () => {
@@ -112,7 +112,7 @@ test('an offline mower shows "Hors ligne" and unknown values are skipped', () =>
     config,
   );
   assert.deepEqual(states, [
-    { device_feature_external_id: 'mower:iot-luba-1:status', state: { text: 'Hors ligne' } },
+    { device_feature_external_id: 'mower:iot-luba-1:status', text: 'Hors ligne' },
   ]);
 });
 
