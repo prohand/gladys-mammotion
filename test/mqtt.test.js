@@ -5,6 +5,16 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { MammotionMqtt, deviceTopics, parseBrokerUrl } from '../src/mammotion/mqtt.js';
+import { bytesField, message, varintField } from '../src/mammotion/protobuf.js';
+
+// LubaMsg { sys { toapp_report_data { dev { sys_status, battery_val }, work { knife_height } } } }
+function reportContent({ workMode, battery, height }) {
+  const dev = message(varintField(1, workMode), varintField(2, 1), varintField(3, battery));
+  const work = message(varintField(20, height));
+  const report = message(bytesField(2, dev), bytesField(5, work));
+  const sys = message(bytesField(39, report));
+  return message(varintField(1, 244), bytesField(10, sys), varintField(15, 1n)).toString('base64');
+}
 
 function followed(onUpdate) {
   const mqtt = new MammotionMqtt(async () => ({}), onUpdate);
@@ -71,4 +81,40 @@ test('status messages set the connectivity, unknown devices are ignored', () => 
   assert.equal(mqtt.cache.size, 1);
   mqtt.handleMessage('/sys/proto/pk/Luba-VP/thing/event/x/post', Buffer.from('{}'));
   mqtt.handleMessage('/sys/pk/Luba-VP/thing/event/property/post', Buffer.from('not json'));
+});
+
+test('protobuf reports update the state and win over older property posts', () => {
+  const updates = [];
+  const mqtt = followed((iotId) => updates.push(iotId));
+  mqtt.handleMessage(
+    '/sys/pk/Luba-VP/thing/event/property/post',
+    post({ batteryPercentage: 100, deviceState: 15, knifeHeight: 50 }),
+  );
+  mqtt.handleMessage(
+    '/sys/pk/Luba-VP/thing/event/device_protobuf_msg_event/post',
+    Buffer.from(
+      JSON.stringify({
+        params: { content: reportContent({ workMode: 13, battery: 97, height: 60 }) },
+      }),
+    ),
+  );
+  let status = mqtt.getStatus('iot-2');
+  assert.equal(status.workMode, 13);
+  assert.equal(status.battery, 97);
+  assert.equal(status.bladeHeightMm, 60);
+  assert.equal(status.online, true);
+  assert.equal(updates.length, 2);
+
+  // A later property post is newer again.
+  mqtt.handleMessage('/sys/pk/Luba-VP/thing/event/property/post', post({ batteryPercentage: 95 }));
+  status = mqtt.getStatus('iot-2');
+  assert.equal(status.battery, 95);
+  assert.equal(status.workMode, 13);
+
+  // Not a report: ignored.
+  mqtt.handleMessage(
+    '/sys/pk/Luba-VP/thing/event/device_protobuf_msg_event/post',
+    Buffer.from(JSON.stringify({ params: { content: 'AAAA' } })),
+  );
+  assert.equal(updates.length, 3);
 });
