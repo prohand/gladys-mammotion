@@ -14,7 +14,7 @@
 // remaining minutes in its high 16 bits (same reading as Mammotion-HA).
 // `bp_info` is not 0 while a job stopped halfway can be carried on.
 //
-// The answers to the navigation requests (zone list, route) come on the same
+// The answers to the navigation requests (map elements, zone names, route) come on the same
 // topic, in LubaMsg { 11: nav MctlNav } (see parseNav).
 // Field numbers: PyMammotion proto/luba_msg.proto, mctrl_sys.proto, mctrl_nav.proto.
 // -----------------------------------------------------------------------------
@@ -125,6 +125,70 @@ export function parseZoneList(nav) {
     .map((entry) => decodeMessage(entry))
     .map((zone) => ({ hash: first(zone, 1), name: first(zone, 2)?.toString('utf8') ?? '' }))
     .filter((zone) => typeof zone.hash === 'bigint' && zone.hash !== 0n);
+}
+
+/**
+ * One frame of the map element hashes, MctlNav.toapp_gethash_ack (31), or null
+ * when the nav message is something else. dataCouple is a repeated int64:
+ * packed (proto3 default) or not.
+ * @returns {{ subCmd: number, totalFrame: number, currentFrame: number, hashes: bigint[] } | null}
+ */
+export function parseHashList(nav) {
+  const ack = sub(nav, 31);
+  if (!ack) {
+    return null;
+  }
+  const hashes = [];
+  for (const value of ack[13] ?? []) {
+    if (typeof value === 'bigint') {
+      hashes.push(value);
+    } else if (Buffer.isBuffer(value)) {
+      hashes.push(...readPackedVarints(value));
+    }
+  }
+  return {
+    subCmd: int(first(ack, 2)) ?? 0,
+    totalFrame: int(first(ack, 3)) ?? 0,
+    currentFrame: int(first(ack, 4)) ?? 0,
+    hashes: hashes.map((h) => BigInt.asUintN(64, h)).filter((h) => h !== 0n),
+  };
+}
+
+function readPackedVarints(buf) {
+  const values = [];
+  let value = 0n;
+  let shift = 0n;
+  for (const byte of buf) {
+    value |= BigInt(byte & 0x7f) << shift;
+    shift += 7n;
+    if (!(byte & 0x80)) {
+      values.push(value);
+      value = 0n;
+      shift = 0n;
+    }
+  }
+  return values;
+}
+
+// NavGetCommDataAck.type of a mowing zone (PyMammotion PathType.AREA).
+export const MAP_ELEMENT_ZONE = 0;
+
+/**
+ * First frame of a map element, MctlNav.toapp_get_commondata_ack (33), when it
+ * is the element of the given hash; null otherwise.
+ * @returns {{ hash: bigint, type: number, name: string } | null}
+ */
+export function parseMapElement(nav, hash) {
+  const ack = sub(nav, 33);
+  if (!ack || first(ack, 6) !== BigInt.asUintN(64, BigInt(hash))) {
+    return null;
+  }
+  const nameTime = sub(ack, 15);
+  return {
+    hash: first(ack, 6),
+    type: int(first(ack, 5)) ?? 0,
+    name: first(nameTime, 1)?.toString('utf8') ?? '',
+  };
 }
 
 /**

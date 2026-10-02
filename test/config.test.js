@@ -6,6 +6,7 @@ import {
   devicePollFrequency,
   GLADYS_POLL_FREQUENCIES_MS,
   hasCredentials,
+  mowingZoneNames,
 } from '../src/config.js';
 
 test('normalizeConfig returns the defaults when called with no argument', () => {
@@ -47,4 +48,27 @@ test('the device poll frequency is always a value Gladys accepts', () => {
     assert.ok(GLADYS_POLL_FREQUENCIES_MS.includes(ms), `${seconds} s -> ${ms} ms`);
     assert.ok(ms <= seconds * 1000, 'Gladys polls at least as often as asked');
   }
+});
+
+test('the mowing settings come from a form as strings and stay within bounds', () => {
+  const config = normalizeConfig({
+    blade_height: '200',
+    mowing_speed: '0,55',
+    line_spacing: '',
+    mowing_angle: 'abc',
+    mowing_pattern: 'spiral',
+  });
+  assert.equal(config.blade_height, 100);
+  assert.equal(config.mowing_speed, 0.6);
+  assert.equal(config.line_spacing, 32);
+  assert.equal(config.mowing_angle, 111);
+  assert.equal(config.mowing_pattern, 'zigzag');
+});
+
+test('mowingZoneNames splits the zone list', () => {
+  assert.deepEqual(mowingZoneNames(normalizeConfig()), []);
+  assert.deepEqual(mowingZoneNames(normalizeConfig({ mowing_zones: ' Avant, ,Arrière ' })), [
+    'avant',
+    'arrière',
+  ]);
 });

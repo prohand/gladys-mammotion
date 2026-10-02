@@ -94,6 +94,189 @@
           }
         }
       ]
+    },
+    {
+      "key": "mowing",
+      "type": "section",
+      "label": {
+        "en": "New mowing job",
+        "fr": "Nouvelle tonte"
+      },
+      "description": {
+        "en": "Settings used when Gladys starts a new job (Mowing switch ON while the mower is docked or ready). The Mammotion app keeps its own settings on the phone: Gladys cannot read them.",
+        "fr": "Réglages utilisés quand Gladys lance une nouvelle tonte (interrupteur Tonte sur ON, tondeuse à la base ou prête). L'application Mammotion garde ses réglages dans le téléphone : Gladys ne peut pas les lire."
+      }
+    },
+    {
+      "key": "mowing_zones",
+      "type": "string",
+      "label": {
+        "en": "Zones to mow",
+        "fr": "Zones à tondre"
+      },
+      "description": {
+        "en": "Zone names as shown in the app, separated by commas. Empty: every zone of the map.",
+        "fr": "Noms des zones comme dans l'application, séparés par des virgules. Vide : toutes les zones de la carte."
+      },
+      "required": false,
+      "default": ""
+    },
+    {
+      "key": "blade_height",
+      "type": "number",
+      "label": {
+        "en": "Blade height (mm)",
+        "fr": "Hauteur de coupe (mm)"
+      },
+      "required": false,
+      "default": 60,
+      "min": 15,
+      "max": 100
+    },
+    {
+      "key": "mowing_speed",
+      "type": "number",
+      "label": {
+        "en": "Speed (m/s)",
+        "fr": "Vitesse (m/s)"
+      },
+      "required": false,
+      "default": 0.6,
+      "min": 0.2,
+      "max": 1.2
+    },
+    {
+      "key": "line_spacing",
+      "type": "number",
+      "label": {
+        "en": "Path spacing (cm)",
+        "fr": "Espacement des trajectoires (cm)"
+      },
+      "required": false,
+      "default": 32,
+      "min": 15,
+      "max": 40
+    },
+    {
+      "key": "mowing_angle",
+      "type": "number",
+      "label": {
+        "en": "Path angle (°)",
+        "fr": "Angle de coupe de la trajectoire (°)"
+      },
+      "required": false,
+      "default": 111,
+      "min": 0,
+      "max": 359
+    },
+    {
+      "key": "mowing_pattern",
+      "type": "select",
+      "label": {
+        "en": "Mowing pattern",
+        "fr": "Mode trajectoire de tonte"
+      },
+      "required": false,
+      "default": "zigzag",
+      "options": [
+        {
+          "value": "zigzag",
+          "label": {
+            "en": "Zigzag",
+            "fr": "Trajectoire en zigzag"
+          }
+        },
+        {
+          "value": "chessboard",
+          "label": {
+            "en": "Chessboard",
+            "fr": "Damier"
+          }
+        }
+      ]
+    },
+    {
+      "key": "border_laps",
+      "type": "number",
+      "label": {
+        "en": "Perimeter laps",
+        "fr": "Tours de tonte du périmètre"
+      },
+      "required": false,
+      "default": 0,
+      "min": 0,
+      "max": 4
+    },
+    {
+      "key": "obstacle_detection",
+      "type": "select",
+      "label": {
+        "en": "Obstacle detection",
+        "fr": "Mode détection d'obstacle"
+      },
+      "required": false,
+      "default": "off",
+      "options": [
+        {
+          "value": "off",
+          "label": {
+            "en": "Off",
+            "fr": "Désactivé"
+          }
+        },
+        {
+          "value": "slow",
+          "label": {
+            "en": "Slow down on contact",
+            "fr": "Ralentir au contact"
+          }
+        },
+        {
+          "value": "less",
+          "label": {
+            "en": "Avoid contact",
+            "fr": "Éviter le contact"
+          }
+        }
+      ]
+    },
+    {
+      "key": "obstacle_laps",
+      "type": "number",
+      "label": {
+        "en": "No-go zone laps",
+        "fr": "Tours de tonte des zones interdites"
+      },
+      "required": false,
+      "default": 0,
+      "min": 0,
+      "max": 4
+    },
+    {
+      "key": "mowing_order",
+      "type": "select",
+      "label": {
+        "en": "Path order",
+        "fr": "Ordre des itinéraires"
+      },
+      "required": false,
+      "default": "zigzag_first",
+      "options": [
+        {
+          "value": "zigzag_first",
+          "label": {
+            "en": "Zigzag first",
+            "fr": "Zigzag d'abord"
+          }
+        },
+        {
+          "value": "border_first",
+          "label": {
+            "en": "Perimeter first",
+            "fr": "Périmètre d'abord"
+          }
+        }
+      ]
     }
   ],
   "actions": [

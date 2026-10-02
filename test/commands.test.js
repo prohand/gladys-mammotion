@@ -1,6 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { normalizeConfig } from '../src/config.js';
 import {
+  buildHashListRequestContent,
+  buildMapElementRequestContent,
   buildReportRequestContent,
   buildRouteContent,
   buildRouteQueryContent,
@@ -10,8 +13,19 @@ import {
   MOWER_ACTIONS,
   receiverFor,
 } from '../src/mammotion/commands.js';
-import { decodeMessage, encodeVarint } from '../src/mammotion/protobuf.js';
-import { parseRouteAnswer, parseZoneList } from '../src/mammotion/report.js';
+import {
+  bytesField,
+  decodeMessage,
+  encodeVarint,
+  message,
+  varintField,
+} from '../src/mammotion/protobuf.js';
+import {
+  parseHashList,
+  parseMapElement,
+  parseRouteAnswer,
+  parseZoneList,
+} from '../src/mammotion/report.js';
 
 // Minimal protobuf reader, enough to check what we encode.
 function decode(buf) {
@@ -135,38 +149,113 @@ test('the zone list request names the mower', () => {
   assert.equal(nameMsg[1], undefined); // rw 0: read
 });
 
-test('a route covers the given zones with the default settings', () => {
+test('a route covers the given zones with the settings of the configuration', () => {
   const content = buildRouteContent(session, luba2, {
     zones: [11n, 2n ** 64n - 1n],
-    bladeHeightMm: 55,
+    settings: normalizeConfig(),
   });
   const route = decodeMessage(navOf(content)[34][0]);
   assert.equal(route[1][0], 1n); // pver
   assert.equal(route[4][0], 4n); // jobMode
   assert.equal(route[5], undefined); // subCmd 0: plan
-  assert.equal(route[6][0], 1n); // 1 border lap
-  assert.equal(route[7][0], 55n); // blade height
-  assert.equal(route[8][0], 25n); // 25 cm between lines
-  assert.equal(route[9][0], 2n); // obstacle detection
-  assert.ok(Math.abs(route[12][0].readFloatLE(0) - 0.3) < 1e-6); // speed
+  assert.equal(route[6][0], 0n); // no perimeter lap
+  assert.equal(route[7][0], 60n); // blade height
+  assert.equal(route[8][0], 32n); // 32 cm between passes
+  assert.equal(route[9][0], 0n); // obstacle detection off
+  assert.equal(route[10][0], 0n); // zigzag
+  assert.equal(route[11][0], 111n); // angle
+  assert.ok(Math.abs(route[12][0].readFloatLE(0) - 0.6) < 1e-6); // speed
   assert.equal(route[13][0].readBigUInt64LE(0), 11n);
   assert.equal(route[13][0].readBigUInt64LE(8), 2n ** 64n - 1n);
-  assert.deepEqual([...route[15][0]], [0, 1, 0, 0, 0, 8, 10, 0]); // reserved (Luba 2+)
+  // zigzag first, 0 lap around the no-go zones, start at 0 %, Luba 2+ bytes
+  assert.deepEqual([...route[15][0]], [1, 0, 0, 0, 0, 8, 10, 0]);
+  assert.equal(route[18][0], 90n);
   assert.equal(route[20][0], 1n);
   assert.equal(route[21][0].length, 32);
+});
+
+test('the route follows the chosen settings', () => {
+  const settings = normalizeConfig({
+    blade_height: '45',
+    mowing_speed: '0,4',
+    line_spacing: 25,
+    mowing_angle: 30,
+    mowing_pattern: 'chessboard',
+    border_laps: 2,
+    obstacle_laps: 1,
+    obstacle_detection: 'less',
+    mowing_order: 'border_first',
+  });
+  const route = decodeMessage(
+    navOf(buildRouteContent(session, luba2, { zones: [1n], settings }))[34][0],
+  );
+  assert.equal(route[6][0], 2n);
+  assert.equal(route[7][0], 45n);
+  assert.equal(route[8][0], 25n);
+  assert.equal(route[9][0], 2n);
+  assert.equal(route[10][0], 1n);
+  assert.equal(route[11][0], 30n);
+  assert.ok(Math.abs(route[12][0].readFloatLE(0) - 0.4) < 1e-6);
+  assert.deepEqual([...route[15][0]].slice(0, 2), [0, 1]);
 });
 
 test('a Yuka route has no blade height (-10, as the app sends)', () => {
   const content = buildRouteContent(
     session,
     { deviceName: 'Yuka-MN6ABCDE' },
-    {
-      zones: [1n],
-      bladeHeightMm: 60,
-    },
+    { zones: [1n], settings: normalizeConfig() },
   );
   const route = decodeMessage(navOf(content)[34][0]);
   assert.equal(BigInt.asIntN(64, route[7][0]), -10n);
+});
+
+test('the map element requests', () => {
+  const all = decodeMessage(navOf(buildHashListRequestContent(session, luba2))[30][0]);
+  assert.equal(all[1][0], 1n); // pver
+  assert.equal(all[2], undefined); // subCmd 0: every element
+  const next = decodeMessage(
+    navOf(buildHashListRequestContent(session, luba2, { totalFrame: 3, currentFrame: 1 }))[30][0],
+  );
+  assert.deepEqual([next[2][0], next[3][0], next[4][0]], [2n, 3n, 1n]);
+  const element = decodeMessage(
+    navOf(buildMapElementRequestContent(session, luba2, 2n ** 63n))[32][0],
+  );
+  assert.equal(element[3][0], 8n); // action: synchronize
+  assert.equal(element[5][0], 2n ** 63n);
+});
+
+test('nav answers: map element hashes, packed or not', () => {
+  const packed = Buffer.concat([encodeVarint(7n), encodeVarint(2n ** 64n - 2n)]);
+  const ack = message(
+    varintField(3, 2),
+    varintField(4, 1),
+    bytesField(13, packed),
+    varintField(13, 9n),
+  );
+  assert.deepEqual(parseHashList({ 31: [ack] }), {
+    subCmd: 0,
+    totalFrame: 2,
+    currentFrame: 1,
+    hashes: [7n, 2n ** 64n - 2n, 9n],
+  });
+  assert.equal(parseHashList({ 34: [Buffer.alloc(0)] }), null);
+});
+
+test('nav answers: one map element', () => {
+  const hash = Buffer.alloc(8);
+  hash.writeBigUInt64LE(2n ** 63n + 1n);
+  const ack = message(
+    varintField(5, 1),
+    Buffer.from([0x31]), // field 6, fixed64
+    hash,
+    bytesField(15, bytesField(1, Buffer.from('Potager'))),
+  );
+  assert.deepEqual(parseMapElement({ 33: [ack] }, 2n ** 63n + 1n), {
+    hash: 2n ** 63n + 1n,
+    type: 1,
+    name: 'Potager',
+  });
+  assert.equal(parseMapElement({ 33: [ack] }, 5n), null);
 });
 
 test('the route query asks for the current route (subCmd 2)', () => {

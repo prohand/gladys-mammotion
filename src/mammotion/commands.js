@@ -11,7 +11,9 @@
 //     7: subtype   (numeric user account id)
 //     8: net       (DevNet { 1: todev_ble_sync })
 //    10: sys       (MctlSys { 38: todev_report_cfg })
-//    11: nav       (MctlNav { 34: bidire_reqconver_path NavReqCoverPath (route),
+//    11: nav       (MctlNav { 30: todev_gethash NavGetHashList (every map element),
+//                             32: todev_get_commondata NavGetCommData (one element),
+//                             34: bidire_reqconver_path NavReqCoverPath (route),
 //                             37: todev_taskctrl NavTaskCtrl { type, action, result },
 //                             58: toapp_map_name_msg NavMapNameMsg (zone list) })
 //    15: timestamp (ms)
@@ -184,13 +186,59 @@ export function buildZoneListRequestContent(session, mower) {
 }
 
 /**
- * 8-byte `reserved` string of a route (PyMammotion create_path_order with the
- * default settings): border mode 0, 1 lap around obstacles, plan enabled, start
+ * Ask the mower for the hashes of every element of its map: zones, no-go
+ * zones, paths… (PyMammotion get_all_boundary_hash_list(0)). The list may come
+ * in several frames: the next one is asked with subCmd 2 and the frame just
+ * received (get_hash_response). It answers with MctlNav.toapp_gethash_ack (31).
+ * @param {{ userAccount: string }} session
+ * @param {{ productKey?: string, deviceName?: string }} mower
+ * @param {{ totalFrame: number, currentFrame: number }} [next] frame received, to get the next one
+ */
+export function buildHashListRequestContent(session, mower, next) {
+  const request = next
+    ? message(
+        varintField(1, 1), // pver
+        varintField(2, 2), // subCmd 2: next frame
+        varintField(3, next.totalFrame),
+        varintField(4, next.currentFrame),
+      )
+    : message(varintField(1, 1)); // pver, subCmd 0: every element of the map
+  return navContent(message(bytesField(30, request)), session, mower);
+}
+
+/**
+ * Ask the mower for one element of its map (PyMammotion synchronize_hash_data).
+ * Its first frame, MctlNav.toapp_get_commondata_ack (33), gives its type
+ * (0 = zone) and its name; the next frames (the outline) are not asked.
+ * @param {{ userAccount: string }} session
+ * @param {{ productKey?: string, deviceName?: string }} mower
+ * @param {bigint} hash
+ */
+export function buildMapElementRequestContent(session, mower, hash) {
+  const request = message(
+    varintField(1, 1), // pver
+    varintField(2, 1), // subCmd
+    varintField(3, 8), // action: synchronize
+    varintField(5, BigInt.asUintN(64, BigInt(hash))), // hash (int64)
+  );
+  return navContent(message(bytesField(32, request)), session, mower);
+}
+
+// Settings of the app -> NavReqCoverPath values (PyMammotion mowing_modes.py).
+const CHANNEL_MODES = { zigzag: 0, chessboard: 1 }; // CuttingMode
+const ULTRA_WAVE = { off: 0, slow: 1, less: 2 }; // DetectionStrategy
+// toward_included_angle: angle between the two passes of a chessboard.
+const INCLUDED_ANGLE = 90;
+
+/**
+ * 8-byte `reserved` string of a route (PyMammotion create_path_order): mowing
+ * order (0 border first, 1 zigzag first), laps around the no-go zones, start
  * at 0 %, then the model byte (8 on Luba 2 and later, the "mow only" Yuka job
  * mode on a Yuka) and the grass collection frequency (10).
  */
-function pathOrder(mower) {
-  const bytes = [0, 1, 0, 0, 0, 0, 0, 0];
+function pathOrder(mower, settings) {
+  const bytes = [settings.mowing_order === 'border_first' ? 0 : 1, settings.obstacle_laps];
+  bytes.push(0, 0, 0, 0, 0, 0);
   if (receiverFor(mower) === DEV_NAVIGATION) {
     bytes[5] = 8;
     bytes[6] = 10;
@@ -199,27 +247,29 @@ function pathOrder(mower) {
 }
 
 /**
- * Plan a mowing route over the given zones (PyMammotion generate_route_information
- * with the Home Assistant default settings: every zone, 1 border lap, 25 cm
- * between lines, 0.3 m/s, obstacle detection on). The mower answers with a
- * MctlNav.bidire_reqconver_path (34); the job then starts with "start".
+ * Plan a mowing route over the given zones (PyMammotion generate_route_information)
+ * with the mowing settings of the configuration (see config.js). The mower
+ * answers with a MctlNav.bidire_reqconver_path (34); the job then starts with "start".
  * @param {{ userAccount: string }} session
  * @param {{ productKey?: string, deviceName?: string }} mower
- * @param {{ zones: bigint[], bladeHeightMm: number }} route
+ * @param {{ zones: bigint[], settings: object }} route settings: normalized config
  */
-export function buildRouteContent(session, mower, { zones, bladeHeightMm }) {
+export function buildRouteContent(session, mower, { zones, settings }) {
   // A Yuka has no height to set: the app sends -10 (int32, 10 bytes on the wire).
-  const height = YUKA_NAME.test(mower.deviceName ?? '') ? -10 : bladeHeightMm;
+  const height = YUKA_NAME.test(mower.deviceName ?? '') ? -10 : settings.blade_height;
   const route = message(
     varintField(1, 1), // pver
     varintField(4, 4), // jobMode
-    varintField(6, 1), // edgeMode: border laps
+    varintField(6, settings.border_laps), // edgeMode: border laps
     varintField(7, height < 0 ? BigInt.asUintN(64, BigInt(height)) : height), // knifeHeight
-    varintField(8, 25), // channelWidth (cm)
-    varintField(9, 2), // UltraWave: obstacle detection
-    floatField(12, 0.3), // speed (m/s)
+    varintField(8, settings.line_spacing), // channelWidth (cm)
+    varintField(9, ULTRA_WAVE[settings.obstacle_detection] ?? 0), // UltraWave: obstacle detection
+    varintField(10, CHANNEL_MODES[settings.mowing_pattern] ?? 0), // channelMode
+    varintField(11, settings.mowing_angle), // toward (degrees)
+    floatField(12, settings.mowing_speed), // speed (m/s)
     packedFixed64Field(13, zones), // zoneHashs
-    stringField(15, pathOrder(mower)), // reserved
+    stringField(15, pathOrder(mower, settings)), // reserved
+    varintField(18, INCLUDED_ANGLE), // toward_included_angle (toward_mode 0: relative)
     varintField(20, 1), // task_settings_mode: advanced
     bytesField(21, Buffer.alloc(32)), // auto_change_direction: off (packed, 32 bytes)
   );

@@ -34,10 +34,13 @@ planter l'application.
 
 1. si une tonte s'est arrêtée en cours (`rpt_work.bp_info` ≠ 0), le trajet en
    cours est relu (`NavReqCoverPath` sub_cmd 2) puis « start » la reprend ;
-2. sinon la liste des zones est demandée (`NavMapNameMsg` → réponse
-   `toapp_all_hash_name`), un trajet est préparé sur toutes les zones
-   (`NavReqCoverPath` sub_cmd 0, réglages par défaut de Home Assistant,
-   hauteur de coupe actuelle), puis « start ».
+2. sinon les zones de la carte sont lues : leurs noms (`NavMapNameMsg` →
+   `toapp_all_hash_name`, seulement les zones nommées dans l'appli), puis
+   tous les éléments de la carte (`NavGetHashList` → `toapp_gethash_ack`,
+   trame par trame) dont le type est demandé une fois (`NavGetCommData` →
+   `toapp_get_commondata_ack`, type 0 = zone). Un trajet est préparé sur ces
+   zones, ou celles choisies dans la configuration (`NavReqCoverPath`
+   sub_cmd 0, réglages de la section « Nouvelle tonte »), puis « start ».
 
 Les réponses arrivent sur le broker Mammotion : seules ses tondeuses (pas la
 Luba 1, pas celles de la passerelle Aliyun) peuvent lancer une tonte. Le tout

@@ -4,10 +4,22 @@
 
 import { test, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { MammotionClient, isAuthError, isRtkBaseStation } from '../src/mammotion/client.js';
+import {
+  MammotionClient,
+  isAuthError,
+  isRtkBaseStation,
+  selectZones,
+} from '../src/mammotion/client.js';
+import { normalizeConfig } from '../src/config.js';
 import { HttpError } from '../src/mammotion/http.js';
 import { signHeaders } from '../src/mammotion/aliyun.js';
-import { bytesField, decodeMessage, message, varintField } from '../src/mammotion/protobuf.js';
+import {
+  bytesField,
+  decodeMessage,
+  encodeVarint,
+  message,
+  varintField,
+} from '../src/mammotion/protobuf.js';
 
 // Top-level fields of a base64 LubaMsg (varints as bigints).
 const luba = (content) =>
@@ -355,10 +367,20 @@ test('signHeaders only lists the non-positional headers', () => {
   assert.match(headers['x-ca-signature'], /^[A-Za-z0-9+/]+=*$/);
 });
 
-// A broker mower that answers the nav requests the way a Luba 2 does.
-function startJobFixture({ status = {}, answerZones = true } = {}) {
+// A broker mower that answers the nav requests the way a Luba 2 does. Its map:
+// two named zones, one zone without a name and one no-go zone, whose hashes
+// come in two frames.
+const MAP = [
+  { hash: 11n, type: 0, named: 'Avant' },
+  { hash: 2n ** 63n + 5n, type: 0, named: 'Arrière' },
+  { hash: 21n, type: 0 },
+  { hash: 31n, type: 1 },
+];
+
+function startJobFixture({ status = {}, answerZones = true, answerHashes = true } = {}) {
   mockLogin();
   const client = new MammotionClient({ email: 'me@example.com', password: 'pw' });
+  client.navTimeoutMs = 20;
   const mqtt = client.mqtt;
   mqtt.watch = async () => {};
   mqtt.devices.set('Luba-VPMBS8RA', { iotId: 'iot-2', productKey: 'pk' });
@@ -372,6 +394,15 @@ function startJobFixture({ status = {}, answerZones = true } = {}) {
         }),
       ),
     );
+  const hashFrame = (frame, hashes) =>
+    bytesField(
+      31,
+      message(
+        varintField(3, 2),
+        varintField(4, frame),
+        bytesField(13, Buffer.concat(hashes.map((h) => encodeVarint(h)))),
+      ),
+    );
   const sent = [];
   on('api-iot.mammotion.com', '/v1/mqtt/rpc/thing/service/invoke', (c) => {
     const msg = decodeMessage(Buffer.from(JSON.parse(c.body).args.content, 'base64'));
@@ -380,8 +411,21 @@ function startJobFixture({ status = {}, answerZones = true } = {}) {
     if (nav?.[58] && answerZones) {
       const zone = (hash, name) =>
         bytesField(2, message(fixed64(1, hash), bytesField(2, Buffer.from(name))));
+      const named = MAP.filter((e) => e.named).map((e) => zone(e.hash, e.named));
+      setImmediate(() => answer(bytesField(61, message(...named))));
+    }
+    if (nav?.[30] && answerHashes) {
+      const frame = decodeMessage(nav[30][0])[4]?.[0] ?? 0n;
+      const hashes = MAP.map((e) => e.hash);
       setImmediate(() =>
-        answer(bytesField(61, message(zone(11n, 'Avant'), zone(2n ** 63n + 5n, 'Arrière')))),
+        answer(frame === 0n ? hashFrame(1, hashes.slice(0, 2)) : hashFrame(2, hashes.slice(2))),
+      );
+    }
+    if (nav?.[32]) {
+      const hash = decodeMessage(nav[32][0])[5][0];
+      const element = MAP.find((e) => e.hash === hash);
+      setImmediate(() =>
+        answer(bytesField(33, message(varintField(5, element.type), fixed64(6, hash)))),
       );
     }
     if (nav?.[34]) {
@@ -408,34 +452,79 @@ function fixed64(field, value) {
   return Buffer.concat([Buffer.from([(field << 3) | 1]), buf]);
 }
 
-test('startJob reads the zones, plans a route over all of them, then starts', async () => {
-  const { client, mower, sent } = startJobFixture({ status: { bladeHeightMm: 50 } });
-  await client.startJob(mower);
-  // sync, zone list (58), route (34), start (37)
-  assert.deepEqual(sent, ['type 248', 58, 34, 37]);
+function sentRoute() {
   const routeCall = calls
     .filter((c) => c.path === '/v1/mqtt/rpc/thing/service/invoke')
     .map((c) => decodeMessage(Buffer.from(JSON.parse(c.body).args.content, 'base64')))
     .find((m) => m[11] && decodeMessage(m[11][0])[34]);
-  const route = decodeMessage(decodeMessage(routeCall[11][0])[34][0]);
-  assert.equal(route[7][0], 50n); // blade height of the mower
+  return decodeMessage(decodeMessage(routeCall[11][0])[34][0]);
+}
+
+const zoneHashes = (route) => {
   const zones = route[13][0];
-  assert.equal(zones.length, 16);
-  assert.equal(zones.readBigUInt64LE(0), 11n);
-  assert.equal(zones.readBigUInt64LE(8), 2n ** 63n + 5n);
+  return Array.from({ length: zones.length / 8 }, (_, i) => zones.readBigUInt64LE(i * 8));
+};
+
+test('startJob plans a route over every zone of the map, named or not, then starts', async () => {
+  const { client, mower, sent } = startJobFixture({ status: { bladeHeightMm: 50 } });
+  await client.startJob(mower, normalizeConfig());
+  // sync, zone names (58), 2 frames of hashes (30), types of the unnamed elements (32),
+  // route (34), start (37)
+  assert.deepEqual(sent, ['type 248', 58, 30, 30, 32, 32, 34, 37]);
+  const route = sentRoute();
+  assert.equal(route[7][0], 60n); // blade height of the configuration
+  assert.deepEqual(zoneHashes(route), [11n, 2n ** 63n + 5n, 21n]);
+});
+
+test('startJob reads the type of a map element only once', async () => {
+  const { client, mower, sent } = startJobFixture();
+  await client.startJob(mower, normalizeConfig());
+  sent.length = 0;
+  await client.startJob(mower, normalizeConfig());
+  assert.ok(!sent.includes(32));
+});
+
+test('startJob mows only the zones named in the configuration', async () => {
+  const { client, mower } = startJobFixture();
+  await client.startJob(mower, normalizeConfig({ mowing_zones: 'arrière, Zone 3' }));
+  assert.deepEqual(zoneHashes(sentRoute()), [2n ** 63n + 5n, 21n]);
+});
+
+// The nav answer timers do not hold the event loop: keep it alive meanwhile.
+async function withTimeouts(promise) {
+  const keepAlive = setInterval(() => {}, 1000);
+  try {
+    return await promise;
+  } finally {
+    clearInterval(keepAlive);
+  }
+}
+
+test('startJob falls back on the named zones without the map element list', async () => {
+  const { client, mower } = startJobFixture({ answerHashes: false });
+  await withTimeouts(client.startJob(mower, normalizeConfig()));
+  assert.deepEqual(zoneHashes(sentRoute()), [11n, 2n ** 63n + 5n]);
 });
 
 test('startJob carries on an interrupted job instead of planning a new one', async () => {
   const { client, mower, sent } = startJobFixture({ status: { interruptedJob: true } });
-  await client.startJob(mower);
+  await client.startJob(mower, normalizeConfig());
   assert.deepEqual(sent, ['type 248', 34, 37]);
 });
 
 test('startJob does not start without the zones of the map', async () => {
-  const { client, mower, sent } = startJobFixture({ answerZones: false });
-  client.mqtt.waitForNav = async () => null; // no answer (timeout)
-  await assert.rejects(client.startJob(mower), /did not send its zones/);
+  const { client, mower, sent } = startJobFixture({ answerZones: false, answerHashes: false });
+  await assert.rejects(
+    withTimeouts(client.startJob(mower, normalizeConfig())),
+    /did not send its zones/,
+  );
   assert.ok(!sent.includes(37));
+});
+
+test('selectZones refuses names that are not on the map', () => {
+  const zones = [{ hash: 1n, name: 'Avant' }];
+  assert.deepEqual(selectZones(zones, normalizeConfig()), zones);
+  assert.throws(() => selectZones(zones, normalizeConfig({ mowing_zones: 'Potager' })), /Avant/);
 });
 
 test('startJob is refused for the mowers of the Aliyun gateway', async () => {

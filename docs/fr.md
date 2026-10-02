@@ -22,13 +22,14 @@ Chaque tondeuse de votre compte Mammotion apparaît avec :
 >
 > - si une tonte s'est arrêtée en cours (batterie, pluie…), elle reprend là où
 >   elle en était ;
-> - sinon, Gladys prépare un trajet sur **toutes les zones** de la carte, avec
->   la hauteur de coupe actuelle et les réglages par défaut (1 tour de
->   bordure, 25 cm entre les passages, 0,3 m/s, détection d'obstacles), puis
->   lance la tonte.
+> - sinon, Gladys prépare un trajet sur **toutes les zones** de la carte (même
+>   celles sans nom), ou sur celles choisies dans « Zones à tondre », avec les
+>   réglages de la section « Nouvelle tonte » de la configuration (hauteur,
+>   vitesse, espacement, angle, mode de trajectoire, tours de périmètre,
+>   détection d'obstacle…), puis lance la tonte.
 >
-> Pour tondre une seule zone ou changer les réglages, passez encore par
-> l'application. Cette fonction marche avec les tondeuses du broker Mammotion
+> L'application Mammotion garde ses réglages dans le téléphone : Gladys ne
+> peut pas les lire, renseignez-les dans sa configuration. Cette fonction marche avec les tondeuses du broker Mammotion
 > (Luba 2, Luba mini, Yuka… récentes), pas avec la Luba 1.
 
 ## Configuration

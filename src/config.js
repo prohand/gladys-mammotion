@@ -21,6 +21,34 @@ export const DEFAULT_CONFIG = {
   password: '',
   poll_frequency: 300, // seconds, how often each mower is refreshed
   language: 'fr', // 'fr' | 'en', language of the "Status" text
+  // Settings of a new mowing job started from Gladys (the app keeps its own
+  // settings on the phone: the mower cannot give them back).
+  mowing_zones: '', // zone names, comma separated; empty = every zone of the map
+  blade_height: 60, // mm
+  mowing_speed: 0.6, // m/s
+  line_spacing: 32, // cm between two passes
+  mowing_angle: 111, // degrees, angle of the passes
+  mowing_pattern: 'zigzag', // 'zigzag' | 'chessboard'
+  border_laps: 0, // laps around the perimeter
+  obstacle_laps: 0, // laps around the no-go zones
+  obstacle_detection: 'off', // 'off' | 'slow' | 'less'
+  mowing_order: 'zigzag_first', // 'zigzag_first' | 'border_first'
+};
+
+// Bounds of the mowing settings, kept in sync with the manifest `min` / `max`.
+export const MOWING_BOUNDS = {
+  blade_height: [15, 100],
+  mowing_speed: [0.2, 1.2],
+  line_spacing: [15, 40],
+  mowing_angle: [0, 359],
+  border_laps: [0, 4],
+  obstacle_laps: [0, 4],
+};
+
+const MOWING_CHOICES = {
+  mowing_pattern: ['zigzag', 'chessboard'],
+  obstacle_detection: ['off', 'slow', 'less'],
+  mowing_order: ['zigzag_first', 'border_first'],
 };
 
 // Gladys only accepts a few fixed device poll intervals, in MILLISECONDS
@@ -42,6 +70,21 @@ function clampPollFrequency(value) {
   return Math.min(POLL_FREQUENCY_MAX, Math.max(POLL_FREQUENCY_MIN, Math.round(seconds)));
 }
 
+// Numbers from a form may be strings, with a decimal comma ("0,6").
+function clampNumber(key, value, { integer = true } = {}) {
+  const number = Number(String(value ?? '').replace(',', '.'));
+  if (value === '' || value === null || value === undefined || !Number.isFinite(number)) {
+    return DEFAULT_CONFIG[key];
+  }
+  const [min, max] = MOWING_BOUNDS[key];
+  const clamped = Math.min(max, Math.max(min, number));
+  return integer ? Math.round(clamped) : Math.round(clamped * 10) / 10;
+}
+
+function choice(key, value) {
+  return MOWING_CHOICES[key].includes(value) ? value : DEFAULT_CONFIG[key];
+}
+
 /**
  * Merge the user config with the defaults.
  * @param {Record<string, unknown>} raw config returned by the SDK
@@ -55,10 +98,28 @@ export function normalizeConfig(raw = {}) {
     // Config may arrive as strings from a form: force a number within bounds.
     poll_frequency: clampPollFrequency(raw.poll_frequency ?? DEFAULT_CONFIG.poll_frequency),
     language: raw.language === 'en' ? 'en' : DEFAULT_CONFIG.language,
+    mowing_zones: String(raw.mowing_zones ?? DEFAULT_CONFIG.mowing_zones).trim(),
+    blade_height: clampNumber('blade_height', raw.blade_height),
+    mowing_speed: clampNumber('mowing_speed', raw.mowing_speed, { integer: false }),
+    line_spacing: clampNumber('line_spacing', raw.line_spacing),
+    mowing_angle: clampNumber('mowing_angle', raw.mowing_angle),
+    border_laps: clampNumber('border_laps', raw.border_laps),
+    obstacle_laps: clampNumber('obstacle_laps', raw.obstacle_laps),
+    mowing_pattern: choice('mowing_pattern', raw.mowing_pattern),
+    obstacle_detection: choice('obstacle_detection', raw.obstacle_detection),
+    mowing_order: choice('mowing_order', raw.mowing_order),
   };
 }
 
 /** True when the user filled in what the cloud login needs. */
 export function hasCredentials(config) {
   return Boolean(config.email && config.password);
+}
+
+/** Zone names chosen by the user (lower case), or [] for every zone. */
+export function mowingZoneNames(config) {
+  return String(config.mowing_zones ?? '')
+    .split(',')
+    .map((name) => name.trim().toLowerCase())
+    .filter(Boolean);
 }
