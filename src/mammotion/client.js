@@ -15,7 +15,11 @@
 import { createHash, createHmac, randomInt } from 'node:crypto';
 import { createLogger } from '@gladysassistant/integration-sdk';
 import { assertAliyunOk, callAliyunApi, createAliyunSession } from './aliyun.js';
-import { buildReportRequestContent, buildTaskControlContent } from './commands.js';
+import {
+  buildReportRequestContent,
+  buildSyncContent,
+  buildTaskControlContent,
+} from './commands.js';
 import { HttpError, requestJson } from './http.js';
 import { MammotionMqtt } from './mqtt.js';
 import { parseProperties, toNumber } from './telemetry.js';
@@ -27,6 +31,16 @@ const API_DOMAIN = 'https://domestic.mammotion.com';
 const OAUTH_APP_KEY = 'GxebgSt8si6pKqR';
 const OAUTH_APP_SECRET = 'JP0508SRJFa0A90ADpzLINDBxMa4Vj';
 const TOKEN_PATH = '/oauth2/token';
+
+// The mower stays listening ~10 s after a sync: re-sync past 7 s (PyMammotion).
+const SYNC_INTERVAL_MS = 7_000;
+// Automatic report requests, at most this often per mower. Each one counts in
+// the cloud quota (about 600 messages / 12 h), and replaces the report
+// subscription of the Mammotion app, which then shows the mower disconnected.
+const REPORT_REQUEST_INTERVAL_MS = 5 * 60_000;
+// A report this recent means the mower is already streaming (app open, job
+// running): no need to ask, and asking would cut the app's stream.
+const REPORT_FRESH_MS = 15_000;
 
 // RTK base stations share the account with the mowers but are not mowers.
 const RTK_PRODUCT_KEYS = new Set(['a1qXkZ5P39W', 'a1Nc68bGZzX', 'a1NfZqdSREf', 'a1ZuQVL7UiN']);
@@ -105,6 +119,9 @@ export class MammotionClient {
     this.password = password;
     this.session = null;
     this.aliyun = null;
+    // iotId -> time (ms) of the last sync / report request sent.
+    this.lastSyncAt = new Map();
+    this.lastReportRequestAt = new Map();
     this.mqtt = new MammotionMqtt(() => this.getMqttCredentials(), onMqttUpdate);
   }
 
@@ -322,10 +339,12 @@ export class MammotionClient {
   /**
    * Current telemetry of one mower (see telemetry.js for the shape).
    * @param {{ iotId: string }} mower
+   * @param {{ force?: boolean }} [options] force: ask a broker mower for a
+   *   report even if one was asked less than REPORT_REQUEST_INTERVAL_MS ago
    */
-  async getStatus(mower) {
+  async getStatus(mower, { force = false } = {}) {
     if (mower.cloud === 'mammotion') {
-      return this.getMqttStatus(mower);
+      return this.getMqttStatus(mower, force);
     }
     try {
       return await this.getAliyunStatus(mower);
@@ -333,32 +352,45 @@ export class MammotionClient {
       if (!isNotBoundError(err)) throw err;
       logger.info(`${mower.name} is not on Aliyun, switching to the Mammotion broker`);
       mower.cloud = 'mammotion';
-      return this.getMqttStatus(mower);
+      return this.getMqttStatus(mower, force);
     }
   }
 
   /**
    * Mammotion broker: last values pushed by the mower (null fields if none yet).
-   * Also asks the mower for a fresh report: on its own it only posts its state
-   * now and then (up to an hour apart); the answer arrives on the broker
-   * within seconds and is published by the onMqttUpdate callback.
+   * Also asks the mower for a fresh report when needed: on its own it only
+   * posts its state now and then (up to an hour apart); the answer arrives on
+   * the broker within seconds and is published by the onMqttUpdate callback.
    */
-  async getMqttStatus(mower) {
+  async getMqttStatus(mower, force = false) {
     await this.mqtt.watch(mower);
-    await this.requestReport(mower).catch((err) => {
-      if (isAuthError(err)) throw err;
-      logger.warn(`Report request refused for ${mower.name}: ${err.message}`);
-    });
+    if (this.shouldRequestReport(mower, force)) {
+      await this.requestReport(mower).catch((err) => {
+        if (isAuthError(err)) throw err;
+        logger.warn(`Report request refused for ${mower.name}: ${err.message}`);
+      });
+    }
     return this.mqtt.getStatus(mower.iotId) ?? { ...EMPTY_STATUS };
+  }
+
+  shouldRequestReport(mower, force) {
+    const now = Date.now();
+    if (now - this.mqtt.lastReportAt(mower.iotId) < REPORT_FRESH_MS) {
+      return false;
+    }
+    const lastRequest = this.lastReportRequestAt.get(mower.iotId) ?? 0;
+    return force || now - lastRequest >= REPORT_REQUEST_INTERVAL_MS;
   }
 
   /** Ask a mower of the Mammotion broker to push its state now. */
   async requestReport(mower) {
+    this.lastReportRequestAt.set(mower.iotId, Date.now());
     return this.withRetry(async () => {
       const session = await this.ensureSession();
       if (!session.iotDomain) {
         throw new Error('Mammotion API unavailable: no iot domain in the access token');
       }
+      await this.sync(session, mower);
       await this.mammotionInvoke(session, mower, buildReportRequestContent(session));
     });
   }
@@ -411,33 +443,55 @@ export class MammotionClient {
   }
 
   /**
-   * Send a task control command (start, pause, resume, stop, dock, cancelDock).
-   * Tries the Mammotion API first, then the Aliyun gateway.
+   * Send a task control command (start, pause, resume, stop, dock, cancelDock),
+   * after a sync so that the mower listens.
    */
   async sendCommand(mower, command) {
     return this.withRetry(async () => {
       const session = await this.ensureSession();
       const content = buildTaskControlContent(command, session, mower);
       logger.info(`Sending "${command}" to ${mower.name}`);
+      await this.sync(session, mower);
+      await this.invoke(session, mower, content);
+    });
+  }
 
-      if (session.iotDomain) {
-        try {
-          await this.mammotionInvoke(session, mower, content);
-          return;
-        } catch (err) {
-          if (isAuthError(err) || mower.cloud === 'mammotion') throw err;
-          logger.debug(`Mammotion invoke refused (${err.message}), trying the Aliyun gateway`);
-        }
-      }
+  /**
+   * Wake the cloud link of the mower (see buildSyncContent), unless done less
+   * than SYNC_INTERVAL_MS ago. A refused sync is not fatal: the order follows.
+   */
+  async sync(session, mower) {
+    if (Date.now() - (this.lastSyncAt.get(mower.iotId) ?? 0) < SYNC_INTERVAL_MS) {
+      return;
+    }
+    try {
+      await this.invoke(session, mower, buildSyncContent(session));
+      this.lastSyncAt.set(mower.iotId, Date.now());
+    } catch (err) {
+      if (isAuthError(err)) throw err;
+      logger.debug(`Sync refused by ${mower.name}: ${err.message}`);
+    }
+  }
 
-      if (mower.cloud === 'mammotion') {
-        throw new Error('Mammotion API unavailable: no iot domain in the access token');
+  /** Send a protobuf `content` to a mower: Mammotion API first, then Aliyun. */
+  async invoke(session, mower, content) {
+    if (session.iotDomain) {
+      try {
+        await this.mammotionInvoke(session, mower, content);
+        return;
+      } catch (err) {
+        if (isAuthError(err) || mower.cloud === 'mammotion') throw err;
+        logger.debug(`Mammotion invoke refused (${err.message}), trying the Aliyun gateway`);
       }
-      await this.aliyunCall('/thing/service/invoke', '1.0.5', {
-        args: { content },
-        identifier: 'device_protobuf_sync_service',
-        iotId: mower.iotId,
-      });
+    }
+
+    if (mower.cloud === 'mammotion') {
+      throw new Error('Mammotion API unavailable: no iot domain in the access token');
+    }
+    await this.aliyunCall('/thing/service/invoke', '1.0.5', {
+      args: { content },
+      identifier: 'device_protobuf_sync_service',
+      iotId: mower.iotId,
     });
   }
 

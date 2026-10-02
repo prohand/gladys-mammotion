@@ -83,6 +83,35 @@ test('status messages set the connectivity, unknown devices are ignored', () => 
   mqtt.handleMessage('/sys/pk/Luba-VP/thing/event/property/post', Buffer.from('not json'));
 });
 
+test('protobuf reports carry the charge state, job progress and maintenance', () => {
+  const mqtt = followed();
+  const dev = message(varintField(1, 13), varintField(3, 64)); // charge_state 0: omitted
+  const work = message(
+    varintField(3, (38 << 16) | 120), // remaining 38 min of 120
+    varintField(4, (45 << 16) | 300), // 45 %, 300 m2
+    varintField(20, 55),
+  );
+  const maintain = message(varintField(1, 155528), varintField(2, 683720));
+  const report = message(bytesField(2, dev), bytesField(5, work), bytesField(7, maintain));
+  const content = message(varintField(1, 244), bytesField(10, message(bytesField(39, report))));
+  mqtt.handleMessage(
+    '/sys/pk/Luba-VP/thing/event/device_protobuf_msg_event/post',
+    Buffer.from(JSON.stringify({ params: { content: content.toString('base64') } })),
+  );
+  const status = mqtt.getStatus('iot-2');
+  assert.equal(status.charging, false);
+  assert.equal(status.progressPercent, 45);
+  assert.equal(status.remainingMinutes, 38);
+  assert.equal(status.bladeHeightMm, 55);
+  assert.equal(status.totalDistanceKm, 155.5);
+  assert.equal(status.totalWorkHours, 189.9);
+  assert.ok(mqtt.lastReportAt('iot-2') > 0);
+
+  // A newer property post on the state drops the report's charge state.
+  mqtt.handleMessage('/sys/pk/Luba-VP/thing/event/property/post', post({ deviceState: 15 }));
+  assert.equal(mqtt.getStatus('iot-2').charging, undefined);
+});
+
 test('protobuf reports update the state and win over older property posts', () => {
   const updates = [];
   const mqtt = followed((iotId) => updates.push(iotId));

@@ -3,11 +3,12 @@
 //
 // Gladys has no dedicated "lawn mower" category, so the mower is built from
 // standard features every dashboard already knows how to render:
-//   - Mowing          switch  (1 = start / resume, 0 = pause)
+//   - Mowing          switch  (1 = resume a paused job, 0 = pause)
 //   - Return to dock  switch  (1 = go home, 0 = cancel the return)
-//   - Status          text    (Mowing, Charging, Paused…)
+//   - Status          text    (Mowing (45 %), Charging, Paused…)
 //   - Battery         battery %  + Charging binary
 //   - Blade height    mm
+//   - Remaining time of the job (min)
 //   - Total mowing time (h) and total distance (km)
 // Values are refreshed by polling, every `poll_frequency` seconds (Gladys
 // calls onPoll every 30 or 60 s, index.js skips the calls that come too early).
@@ -40,6 +41,7 @@ export const FEATURE = {
   BATTERY: 'battery',
   CHARGING: 'charging',
   BLADE_HEIGHT: 'blade-height',
+  REMAINING_TIME: 'remaining-time',
   WORK_TIME: 'work-time',
   DISTANCE: 'distance',
 };
@@ -52,6 +54,7 @@ const FEATURE_NAMES = {
   [FEATURE.BATTERY]: { en: 'Battery', fr: 'Batterie' },
   [FEATURE.CHARGING]: { en: 'Charging', fr: 'En charge' },
   [FEATURE.BLADE_HEIGHT]: { en: 'Blade height', fr: 'Hauteur de coupe' },
+  [FEATURE.REMAINING_TIME]: { en: 'Remaining mowing time', fr: 'Temps de tonte restant' },
   [FEATURE.WORK_TIME]: { en: 'Total mowing time', fr: 'Temps de tonte total' },
   [FEATURE.DISTANCE]: { en: 'Total distance', fr: 'Distance totale' },
 };
@@ -135,6 +138,13 @@ export function buildMowerDevice(gladys, mower, config) {
         { unit: DEVICE_FEATURE_UNITS.MM, min: 0, max: 100 },
       ),
       sensor(
+        FEATURE.REMAINING_TIME,
+        name(FEATURE.REMAINING_TIME),
+        DEVICE_FEATURE_CATEGORIES.DURATION,
+        DEVICE_FEATURE_TYPES.DURATION.INTEGER,
+        { unit: DEVICE_FEATURE_UNITS.MINUTES, min: 0, max: 1440, keep_history: false },
+      ),
+      sensor(
         FEATURE.WORK_TIME,
         name(FEATURE.WORK_TIME),
         DEVICE_FEATURE_CATEGORIES.DURATION,
@@ -171,17 +181,26 @@ export function buildMowerStates(gladys, mower, status, config) {
   };
 
   const { workMode, online } = status;
-  const label = workModeLabel(workMode, online, config.language);
+  let label = workModeLabel(workMode, online, config.language);
+  if (label && online !== false && isMowing(workMode) && status.progressPercent > 0) {
+    label = `${label} (${status.progressPercent} %)`;
+  }
   if (label) {
     pushText(FEATURE.STATUS, label);
   }
   if (workMode !== null) {
     push(FEATURE.MOWING, isMowing(workMode) ? 1 : 0);
     push(FEATURE.DOCK, isDocking(workMode) ? 1 : 0);
+  }
+  // The protobuf reports say it directly (charge_state); else read the mode.
+  if (typeof status.charging === 'boolean') {
+    push(FEATURE.CHARGING, status.charging ? 1 : 0);
+  } else if (workMode !== null) {
     push(FEATURE.CHARGING, isCharging(workMode) ? 1 : 0);
   }
   push(FEATURE.BATTERY, status.battery);
   push(FEATURE.BLADE_HEIGHT, status.bladeHeightMm);
+  push(FEATURE.REMAINING_TIME, status.remainingMinutes);
   push(FEATURE.WORK_TIME, status.totalWorkHours);
   push(FEATURE.DISTANCE, status.totalDistanceKm);
   return states;
@@ -189,16 +208,28 @@ export function buildMowerStates(gladys, mower, status, config) {
 
 /**
  * Map a Gladys command on a feature to a mower command.
+ *
+ * "Mowing" ON only resumes a paused job. A new job needs a route planned on
+ * the mower's map first (zones, settings), as the Mammotion app does: a bare
+ * "start" makes the mower and the app misbehave, so it is refused here.
  * @param {string} featureKey one of FEATURE.MOWING / FEATURE.DOCK
  * @param {number} value 0 or 1
- * @param {number|null} workMode last known work mode, to pick start vs resume
- * @returns {'start'|'resume'|'pause'|'dock'|'cancelDock'}
+ * @param {number|null} workMode last known work mode
+ * @returns {'resume'|'pause'|'dock'|'cancelDock'|null} null: nothing to do
  */
 export function commandFor(featureKey, value, workMode) {
   const on = Number(value) === 1;
   if (featureKey === FEATURE.MOWING) {
-    if (!on) return 'pause';
-    return isPaused(workMode) ? 'resume' : 'start';
+    if (on) {
+      if (isPaused(workMode)) return 'resume';
+      if (isMowing(workMode)) return null;
+      throw new Error(
+        workMode === null
+          ? 'Mower state unknown yet, try again in a minute'
+          : 'No paused job to resume: start a new job from the Mammotion app',
+      );
+    }
+    return workMode === null || isMowing(workMode) ? 'pause' : null;
   }
   if (featureKey === FEATURE.DOCK) {
     return on ? 'dock' : 'cancelDock';

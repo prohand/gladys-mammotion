@@ -1,18 +1,23 @@
 # Mammotion
 
 Control your Mammotion robot lawn mower (Luba, Luba 2, Luba mini, Yuka…) from
-Gladys: start mowing, pause, send the mower back to its dock, and follow its
-battery and status.
+Gladys: pause and resume mowing, send the mower back to its dock, and follow
+its battery, status and mowing progress.
 
 ## What you get
 
 Each mower of your Mammotion account shows up with:
 
-- **Mowing** (switch): on = start or resume mowing, off = pause;
+- **Mowing** (switch): on = resume a paused job, off = pause;
 - **Return to dock** (switch): on = go back to the dock, off = cancel;
-- **Status**: Mowing, Charging, Paused, Returning to dock, Offline…;
+- **Status**: Mowing (45 %), Charging, Paused, Returning to dock, Offline…;
 - **Battery** (%) and **Charging**;
-- **Blade height** (mm), **Total mowing time** (h), **Total distance** (km).
+- **Blade height** (mm), **Remaining mowing time** (min);
+- **Total mowing time** (h), **Total distance** (km).
+
+> A **new** job is still started from the Mammotion app: it needs a route
+> planned on the map (zones, settings), which the integration cannot do yet.
+> Gladys can then pause it, resume it and send the mower back to its dock.
 
 ## Configuration
 
@@ -30,7 +35,7 @@ Each mower of your Mammotion account shows up with:
 
 ## Scene ideas
 
-- Start mowing on Saturday at 10 am if the battery is above 80%.
+- Resume the paused job when the rain stops.
 - Send the mower back to its dock when the rain sensor detects rain.
 - Get a message when the status becomes "Location error".
 
@@ -40,6 +45,8 @@ Each mower of your Mammotion account shows up with:
   **Test the connection**.
 - **No mower found**: make sure the mower shows up in the Mammotion app with
   this account (owner or shared).
-- **Values do not change**: click **Refresh the mowers now**, or lower the
-  refresh interval.
+- **Values do not change**: click **Refresh the mowers now**. Recent mowers
+  (Mammotion broker) push their state on their own; Gladys asks them for a
+  report at most every 5 minutes (and right after a command), to stay within
+  the Mammotion cloud quota and not cut the app on your phone.
 - For details, read the integration logs with `LOG_LEVEL=debug`.
