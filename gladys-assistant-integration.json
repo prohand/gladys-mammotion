@@ -6,8 +6,8 @@
     "en": "Control your Mammotion mower (Luba, Yuka): mowing, pause, return to dock, battery and status.",
     "fr": "Pilotez votre tondeuse Mammotion (Luba, Yuka) : tonte, pause, retour à la base, batterie, état."
   },
-  "version": "1.0.6",
-  "docker_image": "ghcr.io/prohand/gladys-mammotion:1.0.6",
+  "version": "1.0.7",
+  "docker_image": "ghcr.io/prohand/gladys-mammotion:1.0.7",
   "gladys_version": ">=4.86.0",
   "cover_image": "https://raw.githubusercontent.com/prohand/gladys-mammotion/main/cover.png",
   "categories": [
