@@ -8,7 +8,9 @@
 // -----------------------------------------------------------------------------
 
 const WIRE_VARINT = 0;
+const WIRE_FIXED64 = 1;
 const WIRE_LENGTH_DELIMITED = 2;
+const WIRE_FIXED32 = 5;
 
 /**
  * Encode an unsigned varint (numbers or bigints, negative values clamp to 0).
@@ -46,15 +48,39 @@ export function bytesField(fieldNumber, value) {
   ]);
 }
 
+/** String field (UTF-8). */
+export function stringField(fieldNumber, value) {
+  return bytesField(fieldNumber, Buffer.from(String(value), 'utf8'));
+}
+
+/** 32-bit float field (wire type 5). */
+export function floatField(fieldNumber, value) {
+  const buf = Buffer.alloc(4);
+  buf.writeFloatLE(Number(value));
+  return Buffer.concat([tag(fieldNumber, WIRE_FIXED32), buf]);
+}
+
+function fixed64(value) {
+  const buf = Buffer.alloc(8);
+  buf.writeBigUInt64LE(BigInt.asUintN(64, BigInt(value)));
+  return buf;
+}
+
+/** Packed repeated fixed64 field (proto3 default for repeated scalars). */
+export function packedFixed64Field(fieldNumber, values) {
+  return bytesField(fieldNumber, Buffer.concat(values.map(fixed64)));
+}
+
 /** Concatenate already-encoded fields into a message. */
 export function message(...fields) {
   return Buffer.concat(fields);
 }
 
 /**
- * Decode one message level into { fieldNumber: [values] }. Varints come back
- * as bigints, length-delimited fields as Buffers (decode them again for an
- * embedded message). Fixed 32/64-bit fields are skipped. Throws on bad data.
+ * Decode one message level into { fieldNumber: [values] }. Varints and fixed64
+ * come back as bigints (unsigned), length-delimited fields as Buffers (decode
+ * them again for an embedded message), fixed32 as 4-byte Buffers. Throws on
+ * bad data.
  * @param {Buffer} buf
  */
 export function decodeMessage(buf) {
@@ -91,9 +117,17 @@ export function decodeMessage(buf) {
       }
       push(field, buf.subarray(pos, pos + length));
       pos += length;
-    } else if (wire === 1) {
+    } else if (wire === WIRE_FIXED64) {
+      if (pos + 8 > buf.length) {
+        throw new Error('truncated protobuf');
+      }
+      push(field, buf.readBigUInt64LE(pos));
       pos += 8;
-    } else if (wire === 5) {
+    } else if (wire === WIRE_FIXED32) {
+      if (pos + 4 > buf.length) {
+        throw new Error('truncated protobuf');
+      }
+      push(field, buf.subarray(pos, pos + 4));
       pos += 4;
     } else {
       throw new Error(`unsupported protobuf wire type ${wire}`);

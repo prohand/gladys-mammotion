@@ -61,11 +61,11 @@
         "fr": "Intervalle de rafraîchissement (s)"
       },
       "description": {
-        "en": "How often each mower is read from the Mammotion cloud, in seconds.",
-        "fr": "Fréquence de lecture de chaque tondeuse sur le cloud Mammotion, en secondes."
+        "en": "How often each mower is read, in seconds. Each read asks the mower for its state, which can briefly disturb the Mammotion app: 300 s or more is advised.",
+        "fr": "Fréquence de lecture de chaque tondeuse, en secondes. Chaque lecture demande son état à la tondeuse, ce qui peut gêner un instant l'appli Mammotion : 300 s ou plus conseillé."
       },
       "required": false,
-      "default": 60,
+      "default": 300,
       "min": 30,
       "max": 3600
     },

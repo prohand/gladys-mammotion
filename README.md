@@ -11,8 +11,9 @@ Chaque tondeuse du compte Mammotion devient un appareil Gladys avec :
 
 | Fonctionnalité   | Type Gladys             | Rôle                                                       |
 | ---------------- | ----------------------- | ---------------------------------------------------------- |
-| Tonte            | interrupteur (commande) | `1` = reprendre une tonte en pause, `0` = pause            |
+| Tonte            | interrupteur (commande) | `1` = lancer une tonte ou reprendre, `0` = pause           |
 | Retour à la base | interrupteur (commande) | `1` = retour à la base, `0` = annuler le retour            |
+| Rafraîchir       | bouton poussoir         | demande son état à la tondeuse                             |
 | État             | texte                   | « En tonte », « En charge », « En pause », « Hors ligne »… |
 | Batterie         | batterie (%)            | niveau de charge                                           |
 | En charge        | batterie (binaire)      | `1` quand la tondeuse charge sur sa base                   |
@@ -22,15 +23,27 @@ Chaque tondeuse du compte Mammotion devient un appareil Gladys avec :
 | Distance totale  | distance (km)           | compteur total                                             |
 
 Les valeurs sont lues sur le cloud Mammotion toutes les **`poll_frequency`**
-secondes (réglable dans l'écran de configuration, 60 s par défaut, de 30 à
-3600 s). Après une commande, la tondeuse est relue au bout de 10 s.
+secondes (réglable dans l'écran de configuration, 300 s par défaut, de 30 à
+3600 s). Après une commande, la tondeuse est relue au bout de 10 s (30 s
+après un lancement de tonte). Une commande refusée ou inutile n'envoie rien
+à la tondeuse : chaque message la sollicite et gêne l'application Mammotion.
 
-Une nouvelle tonte se lance encore depuis l'application Mammotion (il faut
-d'abord planifier un trajet sur la carte : zones, réglages). Un simple
-« start » sans trajet perturbe la tondeuse et fait planter l'application :
-l'intégration le refuse.
+« Tonte » sur une tondeuse prête lance une tonte comme Home Assistant
+(`startJob`) : un simple « start » sans trajet perturbe la tondeuse et fait
+planter l'application.
 
-Deux boutons sont disponibles dans l'écran de configuration :
+1. si une tonte s'est arrêtée en cours (`rpt_work.bp_info` ≠ 0), le trajet en
+   cours est relu (`NavReqCoverPath` sub_cmd 2) puis « start » la reprend ;
+2. sinon la liste des zones est demandée (`NavMapNameMsg` → réponse
+   `toapp_all_hash_name`), un trajet est préparé sur toutes les zones
+   (`NavReqCoverPath` sub_cmd 0, réglages par défaut de Home Assistant,
+   hauteur de coupe actuelle), puis « start ».
+
+Les réponses arrivent sur le broker Mammotion : seules ses tondeuses (pas la
+Luba 1, pas celles de la passerelle Aliyun) peuvent lancer une tonte. Le tout
+tourne en tâche de fond (Gladys n'attend que 5 s la réponse d'une commande).
+
+Deux boutons sont aussi disponibles dans l'écran de configuration :
 **Tester la connexion** et **Rafraîchir les tondeuses**.
 
 ## Configuration
@@ -64,7 +77,7 @@ Deux boutons sont disponibles dans l'écran de configuration :
 - `src/mammotion/commands.js` + `protobuf.js` : commandes au format protobuf
   (`LubaMsg` → `NavTaskCtrl` : start, pause, resume, stop, dock…). Sauf la
   Luba 1, les tondeuses reçoivent ces commandes sur leur carte de navigation
-  (`rcver` = 17).
+  (`rcver` = 17). Même chose pour la liste des zones et le trajet.
 - `src/mammotion/report.js` : lecture des rapports protobuf (état, batterie,
   charge, hauteur de coupe, avancement, temps restant, compteurs).
 - `src/mammotion/telemetry.js` : lecture des propriétés (batterie, état…).

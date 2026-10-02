@@ -147,3 +147,21 @@ test('protobuf reports update the state and win over older property posts', () =
   );
   assert.equal(updates.length, 3);
 });
+
+test('waitForNav resolves on the matching nav answer, null on timeout', async () => {
+  const mqtt = followed();
+  const nav = message(bytesField(34, message(varintField(16, 0))));
+  const content = message(varintField(1, 240), bytesField(11, nav)).toString('base64');
+  const answer = mqtt.waitForNav('iot-2', (n) => (n[34] ? 'route' : null), 1000);
+  const other = mqtt.waitForNav('iot-2', (n) => (n[61] ? 'zones' : null), 20);
+  mqtt.handleMessage(
+    '/sys/pk/Luba-VP/thing/event/device_protobuf_msg_event/post',
+    Buffer.from(JSON.stringify({ params: { content } })),
+  );
+  assert.equal(await answer, 'route');
+  // The timeout timer is unref'd: keep the test process alive meanwhile.
+  const keepAlive = setTimeout(() => {}, 100);
+  assert.equal(await other, null);
+  clearTimeout(keepAlive);
+  assert.equal(mqtt.navWaiters.size, 0);
+});

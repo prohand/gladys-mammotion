@@ -11,14 +11,24 @@
 //     7: subtype   (numeric user account id)
 //     8: net       (DevNet { 1: todev_ble_sync })
 //    10: sys       (MctlSys { 38: todev_report_cfg })
-//    11: nav       (MctlNav { 37: todev_taskctrl NavTaskCtrl { type, action, result } })
+//    11: nav       (MctlNav { 34: bidire_reqconver_path NavReqCoverPath (route),
+//                             37: todev_taskctrl NavTaskCtrl { type, action, result },
+//                             58: toapp_map_name_msg NavMapNameMsg (zone list) })
 //    15: timestamp (ms)
 //   }
 // Field numbers: PyMammotion proto/luba_msg.proto, mctrl_nav.proto, mctrl_sys.proto,
 // dev_net.proto.
 // -----------------------------------------------------------------------------
 
-import { bytesField, encodeVarint, message, varintField } from './protobuf.js';
+import {
+  bytesField,
+  encodeVarint,
+  floatField,
+  message,
+  packedFixed64Field,
+  stringField,
+  varintField,
+} from './protobuf.js';
 
 // NavTaskCtrl.action values understood by the mower.
 export const MOWER_ACTIONS = {
@@ -92,6 +102,7 @@ const NEW_GEN_PRODUCT_KEYS = new Set([
 
 // Technical names of the later mowers: "Luba-VS…", "Luba-VP…", "Yuka-MN…"…
 const NEW_GEN_NAME = /^(luba-[a-z]{2}|yuka-)/i;
+const YUKA_NAME = /^yuka-/i;
 
 // rpt_info_type channels asked in a report request: connection, device state
 // (work mode, battery, charge), RTK, location, work (blade height, progress),
@@ -130,6 +141,21 @@ export function receiverFor(mower) {
   return DEV_MAINCTL;
 }
 
+/** Wrap an encoded MctlNav into a LubaMsg sent to the right board. */
+function navContent(nav, session, mower) {
+  return message(
+    varintField(1, MSG_CMD_TYPE_NAV),
+    varintField(2, DEV_MOBILEAPP),
+    varintField(3, receiverFor(mower)),
+    varintField(4, 1),
+    varintField(5, nextSeq()),
+    varintField(6, 1),
+    varintField(7, accountId(session)),
+    bytesField(11, nav),
+    varintField(15, BigInt(Date.now())),
+  ).toString('base64');
+}
+
 /**
  * Build the base64 `content` of a task control command (start, pause, dock…).
  * @param {keyof typeof MOWER_ACTIONS} command
@@ -142,19 +168,74 @@ export function buildTaskControlContent(command, session, mower) {
     throw new Error(`Unknown mower command "${command}"`);
   }
   const taskCtrl = message(varintField(1, 1), varintField(2, action), varintField(3, 0));
-  const nav = message(bytesField(37, taskCtrl));
+  return navContent(message(bytesField(37, taskCtrl)), session, mower);
+}
 
-  return message(
-    varintField(1, MSG_CMD_TYPE_NAV),
-    varintField(2, DEV_MOBILEAPP),
-    varintField(3, receiverFor(mower)),
-    varintField(4, 1),
-    varintField(5, nextSeq()),
-    varintField(6, 1),
-    varintField(7, accountId(session)),
-    bytesField(11, nav),
-    varintField(15, BigInt(Date.now())),
-  ).toString('base64');
+/**
+ * Ask the mower for the zones of its map (PyMammotion get_area_name_list).
+ * It answers with MctlNav.toapp_all_hash_name (61): { hashnames: [{ hash, name }] }.
+ * @param {{ userAccount: string }} session
+ * @param {{ iotId: string, productKey?: string, deviceName?: string }} mower
+ */
+export function buildZoneListRequestContent(session, mower) {
+  // NavMapNameMsg { rw: 0 (read), deviceId: iotId } (zeros are omitted in proto3)
+  const nameMsg = message(stringField(5, mower.iotId));
+  return navContent(message(bytesField(58, nameMsg)), session, mower);
+}
+
+/**
+ * 8-byte `reserved` string of a route (PyMammotion create_path_order with the
+ * default settings): border mode 0, 1 lap around obstacles, plan enabled, start
+ * at 0 %, then the model byte (8 on Luba 2 and later, the "mow only" Yuka job
+ * mode on a Yuka) and the grass collection frequency (10).
+ */
+function pathOrder(mower) {
+  const bytes = [0, 1, 0, 0, 0, 0, 0, 0];
+  if (receiverFor(mower) === DEV_NAVIGATION) {
+    bytes[5] = 8;
+    bytes[6] = 10;
+  }
+  return String.fromCharCode(...bytes);
+}
+
+/**
+ * Plan a mowing route over the given zones (PyMammotion generate_route_information
+ * with the Home Assistant default settings: every zone, 1 border lap, 25 cm
+ * between lines, 0.3 m/s, obstacle detection on). The mower answers with a
+ * MctlNav.bidire_reqconver_path (34); the job then starts with "start".
+ * @param {{ userAccount: string }} session
+ * @param {{ productKey?: string, deviceName?: string }} mower
+ * @param {{ zones: bigint[], bladeHeightMm: number }} route
+ */
+export function buildRouteContent(session, mower, { zones, bladeHeightMm }) {
+  // A Yuka has no height to set: the app sends -10 (int32, 10 bytes on the wire).
+  const height = YUKA_NAME.test(mower.deviceName ?? '') ? -10 : bladeHeightMm;
+  const route = message(
+    varintField(1, 1), // pver
+    varintField(4, 4), // jobMode
+    varintField(6, 1), // edgeMode: border laps
+    varintField(7, height < 0 ? BigInt.asUintN(64, BigInt(height)) : height), // knifeHeight
+    varintField(8, 25), // channelWidth (cm)
+    varintField(9, 2), // UltraWave: obstacle detection
+    floatField(12, 0.3), // speed (m/s)
+    packedFixed64Field(13, zones), // zoneHashs
+    stringField(15, pathOrder(mower)), // reserved
+    varintField(20, 1), // task_settings_mode: advanced
+    bytesField(21, Buffer.alloc(32)), // auto_change_direction: off (packed, 32 bytes)
+  );
+  return navContent(message(bytesField(34, route)), session, mower);
+}
+
+/**
+ * Ask the mower for the route of its interrupted job (PyMammotion
+ * query_generate_route_information): the app sends it before "start" to carry
+ * on a job that stopped halfway (low battery, rain…).
+ * @param {{ userAccount: string }} session
+ * @param {{ productKey?: string, deviceName?: string }} mower
+ */
+export function buildRouteQueryContent(session, mower) {
+  const route = message(varintField(1, 1), varintField(5, 2)); // pver, subCmd 2
+  return navContent(message(bytesField(34, route)), session, mower);
 }
 
 /**

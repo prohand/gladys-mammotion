@@ -37,14 +37,21 @@ test('the mower device uses a poll_frequency accepted by Gladys (ms)', () => {
   assert.equal(device.external_id, 'mower:iot-luba-1');
 });
 
-test('only the mowing and dock switches are controllable', () => {
+test('only the mowing and dock switches and the refresh button are controllable', () => {
   const device = buildMowerDevice(gladys, luba, config);
   const writable = device.features.filter((f) => !f.read_only).map((f) => f.external_id);
-  assert.deepEqual(writable.sort(), ['mower:iot-luba-1:dock', 'mower:iot-luba-1:mowing']);
+  assert.deepEqual(writable.sort(), [
+    'mower:iot-luba-1:dock',
+    'mower:iot-luba-1:mowing',
+    'mower:iot-luba-1:refresh',
+  ]);
   for (const key of [FEATURE.MOWING, FEATURE.DOCK]) {
     assert.equal(feature(device, key).category, DEVICE_FEATURE_CATEGORIES.SWITCH);
     assert.equal(feature(device, key).type, DEVICE_FEATURE_TYPES.SWITCH.BINARY);
   }
+  // A push button on the dashboard.
+  assert.equal(feature(device, FEATURE.REFRESH).category, DEVICE_FEATURE_CATEGORIES.BUTTON);
+  assert.equal(feature(device, FEATURE.REFRESH).type, DEVICE_FEATURE_TYPES.BUTTON.PUSH);
 });
 
 test('feature external_ids are unique', () => {
@@ -134,6 +141,17 @@ test('a report shows the job progress, remaining time and charge state', () => {
   assert.ok(
     docked.some((s) => s.device_feature_external_id.endsWith(':charging') && s.state === 1),
   );
+
+  // Out of a job, the time left of the last job means nothing: 0.
+  const ready = buildMowerStates(
+    gladys,
+    luba,
+    { workMode: WORK_MODES.READY, online: true, remainingMinutes: 382 },
+    config,
+  );
+  assert.ok(
+    ready.some((s) => s.device_feature_external_id.endsWith(':remaining-time') && s.state === 0),
+  );
 });
 
 test('an offline mower shows "Hors ligne" and unknown values are skipped', () => {
@@ -152,15 +170,17 @@ test('commandFor maps the switches to mower commands', () => {
   assert.equal(commandFor(FEATURE.MOWING, 1, WORK_MODES.PAUSE), 'resume');
   assert.equal(commandFor(FEATURE.MOWING, 1, WORK_MODES.CHARGING_PAUSE), 'resume');
   assert.equal(commandFor(FEATURE.MOWING, 1, WORK_MODES.WORKING), null);
-  // A new job needs a route planned by the app: never a bare "start".
-  assert.throws(() => commandFor(FEATURE.MOWING, 1, WORK_MODES.CHARGING), /Mammotion app/);
-  assert.throws(() => commandFor(FEATURE.MOWING, 1, WORK_MODES.READY), /Mammotion app/);
+  // A ready mower starts a new job (route planned first): never a bare "start".
+  assert.equal(commandFor(FEATURE.MOWING, 1, WORK_MODES.READY), 'startJob');
+  assert.equal(commandFor(FEATURE.MOWING, 1, WORK_MODES.INITIALIZATION), 'startJob');
+  assert.throws(() => commandFor(FEATURE.MOWING, 1, WORK_MODES.RETURNING), /Returning/);
   assert.throws(() => commandFor(FEATURE.MOWING, 1, null), /unknown/);
   assert.equal(commandFor(FEATURE.MOWING, 0, WORK_MODES.WORKING), 'pause');
   assert.equal(commandFor(FEATURE.MOWING, 0, null), 'pause');
   assert.equal(commandFor(FEATURE.MOWING, 0, WORK_MODES.CHARGING), null);
   assert.equal(commandFor(FEATURE.DOCK, 1, WORK_MODES.WORKING), 'dock');
   assert.equal(commandFor(FEATURE.DOCK, 0, WORK_MODES.RETURNING), 'cancelDock');
+  assert.equal(commandFor(FEATURE.REFRESH, 1, null), 'refresh');
   assert.throws(() => commandFor(FEATURE.BATTERY, 1, null));
 });
 
