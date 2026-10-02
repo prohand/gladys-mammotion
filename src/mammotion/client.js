@@ -8,7 +8,8 @@
 //     Luba / Yuka mowers.
 // Mowers that are not bound on Aliyun ("user device not bind") push their
 // state on the Mammotion MQTT broker instead (see mqtt.js).
-// This client hides all that: listMowers(), getStatus(mower), sendCommand(...).
+// This client hides all that: listMowers(), getStatus(mower), sendCommand(...),
+// startJob(mower).
 // Sessions are opened lazily and renewed on expiry or on an auth error.
 // -----------------------------------------------------------------------------
 
@@ -17,11 +18,16 @@ import { createLogger } from '@gladysassistant/integration-sdk';
 import { assertAliyunOk, callAliyunApi, createAliyunSession } from './aliyun.js';
 import {
   buildReportRequestContent,
+  buildRouteContent,
+  buildRouteQueryContent,
   buildSyncContent,
   buildTaskControlContent,
+  buildZoneListRequestContent,
+  receiverFor,
 } from './commands.js';
 import { HttpError, requestJson } from './http.js';
 import { MammotionMqtt } from './mqtt.js';
+import { parseRouteAnswer, parseZoneList } from './report.js';
 import { parseProperties, toNumber } from './telemetry.js';
 
 const logger = createLogger({ name: 'mammotion' });
@@ -41,6 +47,12 @@ const REPORT_REQUEST_INTERVAL_MS = 5 * 60_000;
 // A report this recent means the mower is already streaming (app open, job
 // running): no need to ask, and asking would cut the app's stream.
 const REPORT_FRESH_MS = 15_000;
+// Wait for the answer to a zone list or route request.
+const NAV_ANSWER_TIMEOUT_MS = 15_000;
+// Blade height of a new job when the mower has not reported its own (Mammotion-HA).
+const DEFAULT_BLADE_HEIGHT_MM = 60;
+// DEV_NAVIGATION: the mowers that list their zones (all but the Luba 1).
+const NAVIGATION_BOARD = 17;
 
 // RTK base stations share the account with the mowers but are not mowers.
 const RTK_PRODUCT_KEYS = new Set(['a1qXkZ5P39W', 'a1Nc68bGZzX', 'a1NfZqdSREf', 'a1ZuQVL7UiN']);
@@ -454,6 +466,72 @@ export class MammotionClient {
       await this.sync(session, mower);
       await this.invoke(session, mower, content);
     });
+  }
+
+  /**
+   * Start a new mowing job, as the app and Home Assistant do: a bare "start"
+   * without a route upsets the mower. A job stopped halfway is carried on
+   * (its route is read back); otherwise a route is planned over every zone of
+   * the map, at the current blade height, then the job starts.
+   * The answers come on the Mammotion broker: only its mowers can do it.
+   * @param {{ iotId: string, name: string, cloud?: string, productKey?: string, deviceName?: string }} mower
+   */
+  async startJob(mower) {
+    if (mower.cloud !== 'mammotion' || receiverFor(mower) !== NAVIGATION_BOARD) {
+      throw new Error('This mower cannot start a new job from Gladys: use the Mammotion app');
+    }
+    await this.mqtt.watch(mower);
+    const status = this.mqtt.getStatus(mower.iotId) ?? {};
+    return this.withRetry(async () => {
+      const session = await this.ensureSession();
+      if (status.interruptedJob) {
+        logger.info(`${mower.name}: carrying on the interrupted job`);
+        await this.navRequest(session, mower, buildRouteQueryContent(session, mower), (nav) =>
+          parseRouteAnswer(nav, 2),
+        );
+      } else {
+        const zones = await this.navRequest(
+          session,
+          mower,
+          buildZoneListRequestContent(session, mower),
+          parseZoneList,
+        );
+        if (!zones || zones.length === 0) {
+          throw new Error(
+            zones ? 'No zone on the mower map' : 'The mower did not send its zones, try again',
+          );
+        }
+        const bladeHeightMm = status.bladeHeightMm || DEFAULT_BLADE_HEIGHT_MM;
+        logger.info(
+          `${mower.name}: planning a route over ${zones.length} zone(s) ` +
+            `(${zones.map((z) => z.name || z.hash).join(', ')}), blade at ${bladeHeightMm} mm`,
+        );
+        const content = buildRouteContent(session, mower, {
+          zones: zones.map((z) => z.hash),
+          bladeHeightMm,
+        });
+        const answer = await this.navRequest(session, mower, content, (nav) =>
+          parseRouteAnswer(nav, 0),
+        );
+        // The mower often takes the route without answering (Mammotion-HA #848).
+        logger.info(
+          answer
+            ? `${mower.name}: route planned (result ${answer.result})`
+            : `${mower.name}: no answer to the route, starting anyway`,
+        );
+      }
+      logger.info(`Sending "start" to ${mower.name}`);
+      await this.sync(session, mower);
+      await this.invoke(session, mower, buildTaskControlContent('start', session, mower));
+    });
+  }
+
+  /** Send a nav request and wait for its answer on the broker (null on timeout). */
+  async navRequest(session, mower, content, match) {
+    const answer = this.mqtt.waitForNav(mower.iotId, match, NAV_ANSWER_TIMEOUT_MS);
+    await this.sync(session, mower);
+    await this.invoke(session, mower, content);
+    return answer;
   }
 
   /**

@@ -7,12 +7,16 @@
 //
 //   LubaMsg { 10: sys MctlSys { 39: toapp_report_data report_info_data {
 //     2: dev      rpt_dev_status { 1: sys_status, 2: charge_state, 3: battery_val }
-//     5: work     rpt_work { 3: progress, 4: area, 20: knife_height }
+//     5: work     rpt_work { 3: progress, 4: area, 5: bp_info, 20: knife_height }
 //     7: maintain rpt_maintain { 1: mileage (m), 2: work_time (s) }
 //   } } }
 // `area` packs the done percentage in its high 16 bits, `progress` the
 // remaining minutes in its high 16 bits (same reading as Mammotion-HA).
-// Field numbers: PyMammotion proto/luba_msg.proto and mctrl_sys.proto.
+// `bp_info` is not 0 while a job stopped halfway can be carried on.
+//
+// The answers to the navigation requests (zone list, route) come on the same
+// topic, in LubaMsg { 11: nav MctlNav } (see parseNav).
+// Field numbers: PyMammotion proto/luba_msg.proto, mctrl_sys.proto, mctrl_nav.proto.
 // -----------------------------------------------------------------------------
 
 import { decodeMessage } from './protobuf.js';
@@ -41,8 +45,8 @@ function sub(fields, n) {
  * fields are set), or null when it is not a state report.
  * @param {string} content
  * @returns {{ workMode?: number, battery?: number, charging?: boolean, bladeHeightMm?: number,
- *   progressPercent?: number, remainingMinutes?: number, totalWorkHours?: number,
- *   totalDistanceKm?: number } | null}
+ *   progressPercent?: number, remainingMinutes?: number, interruptedJob?: boolean,
+ *   totalWorkHours?: number, totalDistanceKm?: number } | null}
  */
 export function parseReport(content) {
   try {
@@ -75,6 +79,7 @@ export function parseReport(content) {
       }
       status.progressPercent = Math.min(100, (int(first(work, 4)) ?? 0) >>> 16);
       status.remainingMinutes = (int(first(work, 3)) ?? 0) >>> 16;
+      status.interruptedJob = (int(first(work, 5)) ?? 0) !== 0;
     }
     const maintain = sub(report, 7);
     if (maintain) {
@@ -91,4 +96,46 @@ export function parseReport(content) {
   } catch {
     return null;
   }
+}
+
+/**
+ * Decode a base64 LubaMsg and return its MctlNav fields ({ fieldNumber: [values] }),
+ * or null when it carries no navigation message.
+ * @param {string} content
+ */
+export function parseNav(content) {
+  try {
+    return sub(decodeMessage(Buffer.from(String(content), 'base64')), 11);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Zone hashes of a MctlNav.toapp_all_hash_name (61) answer, or null when the
+ * nav message is something else.
+ * @returns {Array<{ hash: bigint, name: string }> | null}
+ */
+export function parseZoneList(nav) {
+  const list = sub(nav, 61);
+  if (!list) {
+    return null;
+  }
+  return (list[2] ?? [])
+    .map((entry) => decodeMessage(entry))
+    .map((zone) => ({ hash: first(zone, 1), name: first(zone, 2)?.toString('utf8') ?? '' }))
+    .filter((zone) => typeof zone.hash === 'bigint' && zone.hash !== 0n);
+}
+
+/**
+ * Answer to a route request (MctlNav.bidire_reqconver_path, 34) of the given
+ * sub command (0 = plan, 2 = read the current route), or null.
+ * @returns {{ result: number } | null}
+ */
+export function parseRouteAnswer(nav, subCmd) {
+  const route = sub(nav, 34);
+  if (!route || (int(first(route, 5)) ?? 0) !== subCmd) {
+    return null;
+  }
+  return { result: int(first(route, 16)) ?? 0 };
 }

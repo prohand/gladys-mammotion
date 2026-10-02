@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { MammotionClient, isAuthError, isRtkBaseStation } from '../src/mammotion/client.js';
 import { HttpError } from '../src/mammotion/http.js';
 import { signHeaders } from '../src/mammotion/aliyun.js';
-import { decodeMessage } from '../src/mammotion/protobuf.js';
+import { bytesField, decodeMessage, message, varintField } from '../src/mammotion/protobuf.js';
 
 // Top-level fields of a base64 LubaMsg (varints as bigints).
 const luba = (content) =>
@@ -353,4 +353,95 @@ test('signHeaders only lists the non-positional headers', () => {
   });
   assert.equal(headers['x-ca-signature-headers'], 'x-ca-key,x-ca-nonce');
   assert.match(headers['x-ca-signature'], /^[A-Za-z0-9+/]+=*$/);
+});
+
+// A broker mower that answers the nav requests the way a Luba 2 does.
+function startJobFixture({ status = {}, answerZones = true } = {}) {
+  mockLogin();
+  const client = new MammotionClient({ email: 'me@example.com', password: 'pw' });
+  const mqtt = client.mqtt;
+  mqtt.watch = async () => {};
+  mqtt.devices.set('Luba-VPMBS8RA', { iotId: 'iot-2', productKey: 'pk' });
+  mqtt.getStatus = () => status;
+  const answer = (nav) =>
+    mqtt.handleMessage(
+      '/sys/pk/Luba-VPMBS8RA/thing/event/device_protobuf_msg_event/post',
+      Buffer.from(
+        JSON.stringify({
+          params: { content: message(varintField(1, 240), bytesField(11, nav)).toString('base64') },
+        }),
+      ),
+    );
+  const sent = [];
+  on('api-iot.mammotion.com', '/v1/mqtt/rpc/thing/service/invoke', (c) => {
+    const msg = decodeMessage(Buffer.from(JSON.parse(c.body).args.content, 'base64'));
+    const nav = msg[11] ? decodeMessage(msg[11][0]) : null;
+    sent.push(nav ? Number(Object.keys(nav)[0]) : `type ${msg[1][0]}`);
+    if (nav?.[58] && answerZones) {
+      const zone = (hash, name) =>
+        bytesField(2, message(fixed64(1, hash), bytesField(2, Buffer.from(name))));
+      setImmediate(() =>
+        answer(bytesField(61, message(zone(11n, 'Avant'), zone(2n ** 63n + 5n, 'Arrière')))),
+      );
+    }
+    if (nav?.[34]) {
+      const route = decodeMessage(nav[34][0]);
+      const subCmd = route[5]?.[0] ?? 0n;
+      setImmediate(() => answer(bytesField(34, message(varintField(5, subCmd)))));
+    }
+    return json({ code: 0, data: {} });
+  });
+  const mower = {
+    iotId: 'iot-2',
+    name: 'Luba',
+    productKey: 'pk',
+    deviceName: 'Luba-VPMBS8RA',
+    cloud: 'mammotion',
+  };
+  return { client, mower, sent };
+}
+
+// A fixed64 field, for the fake answers.
+function fixed64(field, value) {
+  const buf = Buffer.alloc(8);
+  buf.writeBigUInt64LE(value);
+  return Buffer.concat([Buffer.from([(field << 3) | 1]), buf]);
+}
+
+test('startJob reads the zones, plans a route over all of them, then starts', async () => {
+  const { client, mower, sent } = startJobFixture({ status: { bladeHeightMm: 50 } });
+  await client.startJob(mower);
+  // sync, zone list (58), route (34), start (37)
+  assert.deepEqual(sent, ['type 248', 58, 34, 37]);
+  const routeCall = calls
+    .filter((c) => c.path === '/v1/mqtt/rpc/thing/service/invoke')
+    .map((c) => decodeMessage(Buffer.from(JSON.parse(c.body).args.content, 'base64')))
+    .find((m) => m[11] && decodeMessage(m[11][0])[34]);
+  const route = decodeMessage(decodeMessage(routeCall[11][0])[34][0]);
+  assert.equal(route[7][0], 50n); // blade height of the mower
+  const zones = route[13][0];
+  assert.equal(zones.length, 16);
+  assert.equal(zones.readBigUInt64LE(0), 11n);
+  assert.equal(zones.readBigUInt64LE(8), 2n ** 63n + 5n);
+});
+
+test('startJob carries on an interrupted job instead of planning a new one', async () => {
+  const { client, mower, sent } = startJobFixture({ status: { interruptedJob: true } });
+  await client.startJob(mower);
+  assert.deepEqual(sent, ['type 248', 34, 37]);
+});
+
+test('startJob does not start without the zones of the map', async () => {
+  const { client, mower, sent } = startJobFixture({ answerZones: false });
+  client.mqtt.waitForNav = async () => null; // no answer (timeout)
+  await assert.rejects(client.startJob(mower), /did not send its zones/);
+  assert.ok(!sent.includes(37));
+});
+
+test('startJob is refused for the mowers of the Aliyun gateway', async () => {
+  const client = new MammotionClient({ email: 'me@example.com', password: 'pw' });
+  await assert.rejects(
+    client.startJob({ iotId: 'iot-1', name: 'Luba', deviceName: 'Luba-VS1', cloud: 'aliyun' }),
+    /Mammotion app/,
+  );
 });

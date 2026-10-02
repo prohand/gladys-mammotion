@@ -7,14 +7,15 @@
 // Topics (same as the Mammotion app, see PyMammotion transport/mqtt.py):
 //   /sys/{pk}/{dn}/thing/event/+/post        property/post = batterie, état…
 //                                            device_protobuf_msg_event = protobuf
-//                                            reports asked by requestReport()
+//                                            reports asked by requestReport(), and
+//                                            answers to the nav requests (waitForNav)
 //   /sys/proto/{pk}/{dn}/thing/event/+/post  protobuf reports (ignored)
 //   /sys/{pk}/{dn}/app/down/thing/status     { action: "online" | "offline" }
 // -----------------------------------------------------------------------------
 
 import mqtt from 'mqtt';
 import { createLogger } from '@gladysassistant/integration-sdk';
-import { parseReport } from './report.js';
+import { parseNav, parseReport } from './report.js';
 import { parseProperties } from './telemetry.js';
 
 const logger = createLogger({ name: 'mammotion-mqtt' });
@@ -77,6 +78,54 @@ export class MammotionMqtt {
     this.cache = new Map();
     // deviceNames that already sent something (logged once, to help support).
     this.heard = new Set();
+    // Pending waitForNav() calls.
+    this.navWaiters = new Set();
+  }
+
+  /**
+   * Wait for a navigation answer of a mower. Call it BEFORE sending the
+   * request: the answer can come back within a few hundred ms.
+   * @template T
+   * @param {string} iotId
+   * @param {(nav: object) => T | null} match returns the value to resolve with, or null
+   * @param {number} timeoutMs
+   * @returns {Promise<T | null>} null on timeout
+   */
+  waitForNav(iotId, match, timeoutMs) {
+    return new Promise((resolve) => {
+      const waiter = { iotId, match, resolve };
+      waiter.timer = setTimeout(() => {
+        this.navWaiters.delete(waiter);
+        resolve(null);
+      }, timeoutMs);
+      waiter.timer.unref?.();
+      this.navWaiters.add(waiter);
+    });
+  }
+
+  resolveNav(iotId, content) {
+    const waiters = [...this.navWaiters].filter((w) => w.iotId === iotId);
+    if (waiters.length === 0) {
+      return;
+    }
+    const nav = parseNav(content);
+    if (!nav) {
+      return;
+    }
+    for (const waiter of waiters) {
+      let value = null;
+      try {
+        value = waiter.match(nav);
+      } catch (err) {
+        // A malformed answer must not break the MQTT message loop.
+        logger.debug(`Unreadable nav answer: ${err.message}`);
+      }
+      if (value !== null && value !== undefined) {
+        clearTimeout(waiter.timer);
+        this.navWaiters.delete(waiter);
+        waiter.resolve(value);
+      }
+    }
   }
 
   /** Follow a mower: subscribe its topics (now or at the next connection). */
@@ -207,7 +256,9 @@ export class MammotionMqtt {
         entry.online = true;
       }
     } else if (topic.endsWith('/device_protobuf_msg_event/post')) {
-      const report = parseReport(message.params?.content ?? message.params?.value?.content);
+      const content = message.params?.content ?? message.params?.value?.content;
+      this.resolveNav(device.iotId, content);
+      const report = parseReport(content);
       if (!report) {
         return;
       }
@@ -255,6 +306,11 @@ export class MammotionMqtt {
 
   stop() {
     this.stopped = true;
+    for (const waiter of this.navWaiters) {
+      clearTimeout(waiter.timer);
+      waiter.resolve(null);
+    }
+    this.navWaiters.clear();
     clearTimeout(this.rebuildTimer);
     this.client?.end(true);
     this.client = null;

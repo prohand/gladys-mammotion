@@ -28,7 +28,7 @@ test('poll_frequency coming from a form is coerced to a number', () => {
 test('poll_frequency is kept within the manifest bounds', () => {
   assert.equal(normalizeConfig({ poll_frequency: 5 }).poll_frequency, 30);
   assert.equal(normalizeConfig({ poll_frequency: 99999 }).poll_frequency, 3600);
-  assert.equal(normalizeConfig({ poll_frequency: 'abc' }).poll_frequency, 60);
+  assert.equal(normalizeConfig({ poll_frequency: 'abc' }).poll_frequency, 300);
 });
 
 test('an unknown language falls back to French', () => {

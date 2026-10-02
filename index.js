@@ -33,6 +33,8 @@ const gladys = new GladysIntegration();
 // Delay before re-reading a mower after a command, so the new state shows up
 // without waiting for the next poll.
 const REFRESH_AFTER_COMMAND_MS = 10_000;
+// A new job takes longer to get going (zones, route, then start).
+const REFRESH_AFTER_START_MS = 30_000;
 // Delay before retrying a failed cloud initialization.
 const INIT_RETRY_MS = 5 * 60_000;
 // Margin for the Gladys scheduler jitter when skipping early polls.
@@ -121,7 +123,7 @@ async function publishPushedState(iotId) {
   }
 }
 
-function scheduleRefresh(mower) {
+function scheduleRefresh(mower, delay = REFRESH_AFTER_COMMAND_MS) {
   const timer = setTimeout(async () => {
     refreshTimers.delete(timer);
     try {
@@ -129,7 +131,7 @@ function scheduleRefresh(mower) {
     } catch (err) {
       logger.warn(`Refresh after command failed for ${mower.name}: ${err.message}`);
     }
-  }, REFRESH_AFTER_COMMAND_MS);
+  }, delay);
   timer.unref?.();
   refreshTimers.add(timer);
 }
@@ -199,6 +201,8 @@ gladys.onPoll(async (device) => {
 });
 
 // --- Command: the user acts on the Mowing / Return to dock switches ---------
+// A refused or useless order sends nothing to the mower: every message to it
+// (sync, report request) disturbs the Mammotion app.
 gladys.onSetValue(async (device, feature, value) => {
   logger.info(`onSetValue <- ${feature.external_id} = ${value}`);
   const target = findMowerFeature(gladys, feature.external_id);
@@ -207,22 +211,43 @@ gladys.onSetValue(async (device, feature, value) => {
     throw new Error(`Unknown mower feature ${feature.external_id}`);
   }
   const { mower, key } = target;
+  const on = Number(value) === 1 ? 1 : 0;
   let command;
   try {
     command = commandFor(key, value, lastKnownWorkMode(mower));
   } catch (err) {
     logger.warn(`${mower.name}: ${err.message}`);
-    scheduleRefresh(mower);
+    // Put the switch back: the order was not sent.
+    await gladys.publishState(feature.external_id, on ? 0 : 1).catch(() => {});
     throw err;
   }
   if (!command) {
     logger.info(`${mower.name}: nothing to do for ${key} = ${value}`);
-    scheduleRefresh(mower);
+    await gladys.publishState(feature.external_id, on);
+    return;
+  }
+  if (command === 'refresh') {
+    // Answer Gladys now: the report comes back on the broker within seconds.
+    pollMower(mower, { force: true }).catch((err) =>
+      logger.warn(`Refresh failed for ${mower.name}: ${err.message}`),
+    );
+    return;
+  }
+  if (command === 'startJob') {
+    // Zones + route + start take longer than the 5 s Gladys waits for an answer.
+    await gladys.publishState(feature.external_id, 1);
+    getClient()
+      .startJob(mower)
+      .then(() => scheduleRefresh(mower, REFRESH_AFTER_START_MS))
+      .catch(async (err) => {
+        logger.warn(`${mower.name}: new job not started: ${err.message}`);
+        await gladys.publishState(feature.external_id, 0).catch(() => {});
+      });
     return;
   }
   await getClient().sendCommand(mower, command);
   // The mower accepted the order: reflect it now, the refresh confirms it.
-  await gladys.publishState(feature.external_id, Number(value) === 1 ? 1 : 0);
+  await gladys.publishState(feature.external_id, on);
   scheduleRefresh(mower);
 });
 

@@ -19,7 +19,7 @@ export const POLL_FREQUENCY_MAX = 3600;
 export const DEFAULT_CONFIG = {
   email: '', // Mammotion app account
   password: '',
-  poll_frequency: 60, // seconds, how often each mower is refreshed
+  poll_frequency: 300, // seconds, how often each mower is refreshed
   language: 'fr', // 'fr' | 'en', language of the "Status" text
 };
 
