@@ -20,11 +20,13 @@ Each mower of your Mammotion account shows up with:
 > Home Assistant does:
 >
 > - a job that stopped halfway (battery, rain…) carries on where it was;
-> - otherwise Gladys plans a route over **every zone** of the map, at the
->   current blade height with the default settings (1 border lap, 25 cm
->   between lines, 0.3 m/s, obstacle detection), then starts the job.
+> - otherwise Gladys plans a route over **every zone** of the map (named or
+>   not), or over those listed in "Zones to mow", with the settings of the
+>   "New mowing job" section of the configuration (height, speed, spacing,
+>   angle, pattern, perimeter laps, obstacle detection…), then starts the job.
 >
-> To mow a single zone or change the settings, use the app. This works with
+> The Mammotion app keeps its settings on the phone: Gladys cannot read them,
+> fill them in its configuration. This works with
 > the mowers of the Mammotion broker (recent Luba 2, Luba mini, Yuka…), not
 > with the Luba 1.
 

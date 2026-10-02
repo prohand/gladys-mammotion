@@ -237,7 +237,7 @@ gladys.onSetValue(async (device, feature, value) => {
     // Zones + route + start take longer than the 5 s Gladys waits for an answer.
     await gladys.publishState(feature.external_id, 1);
     getClient()
-      .startJob(mower)
+      .startJob(mower, config)
       .then(() => scheduleRefresh(mower, REFRESH_AFTER_START_MS))
       .catch(async (err) => {
         logger.warn(`${mower.name}: new job not started: ${err.message}`);
