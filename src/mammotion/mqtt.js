@@ -42,11 +42,12 @@ export function deviceTopics(productKey, deviceName) {
   ];
 }
 
-// property/post name -> telemetry field also carried by the protobuf reports.
+// property/post name -> telemetry fields also carried by the protobuf reports.
 const REPORT_FIELDS = {
-  batteryPercentage: 'battery',
-  deviceState: 'workMode',
-  knifeHeight: 'bladeHeightMm',
+  batteryPercentage: ['battery'],
+  deviceState: ['workMode', 'charging', 'progressPercent', 'remainingMinutes'],
+  knifeHeight: ['bladeHeightMm'],
+  networkInfo: ['totalWorkHours', 'totalDistanceKm'],
 };
 
 function parseJson(buffer) {
@@ -71,8 +72,11 @@ export class MammotionMqtt {
     this.rebuildTimer = null;
     // deviceName -> { iotId, productKey }
     this.devices = new Map();
-    // iotId -> { properties: object, report: object, online: boolean|null, updatedAt: number }
+    // iotId -> { properties: object, report: object, online: boolean|null,
+    //           updatedAt: number, reportAt: number }
     this.cache = new Map();
+    // deviceNames that already sent something (logged once, to help support).
+    this.heard = new Set();
   }
 
   /** Follow a mower: subscribe its topics (now or at the next connection). */
@@ -91,7 +95,14 @@ export class MammotionMqtt {
 
   async subscribe(productKey, deviceName) {
     try {
-      await this.client.subscribeAsync(deviceTopics(productKey, deviceName), { qos: 0 });
+      const granted = await this.client.subscribeAsync(deviceTopics(productKey, deviceName), {
+        qos: 0,
+      });
+      // MQTT 3.1.1 answers a refused topic with qos 128 instead of an error.
+      const refused = (granted ?? []).filter((g) => g.qos === 128).map((g) => g.topic);
+      if (refused.length > 0) {
+        logger.warn(`Broker refused ${refused.join(', ')} for ${deviceName}`);
+      }
       logger.info(`Following ${deviceName} on the Mammotion broker`);
     } catch (err) {
       logger.warn(`Subscription refused for ${deviceName}: ${err.message}`);
@@ -182,9 +193,11 @@ export class MammotionMqtt {
     } else if (topic.endsWith('/property/post') && message.params) {
       Object.assign(entry.properties, message.params);
       // Newer than the last protobuf report for these fields.
-      for (const [property, field] of Object.entries(REPORT_FIELDS)) {
+      for (const [property, fields] of Object.entries(REPORT_FIELDS)) {
         if (message.params[property] !== undefined) {
-          delete entry.report[field];
+          for (const field of fields) {
+            delete entry.report[field];
+          }
         }
       }
       const iotState = message.params.iotState;
@@ -200,10 +213,15 @@ export class MammotionMqtt {
       }
       Object.assign(entry.report, report);
       entry.online = true;
+      entry.reportAt = Date.now();
     } else {
       return;
     }
     entry.updatedAt = Date.now();
+    if (!this.heard.has(parts[3])) {
+      this.heard.add(parts[3]);
+      logger.info(`First data received from ${parts[3]} (${topic.split('/').at(-2)})`);
+    }
     logger.debug(`${parts[3]} <- ${topic.split('/').slice(-2).join('/')}`);
     this.onUpdate(device.iotId);
   }
@@ -211,10 +229,15 @@ export class MammotionMqtt {
   entry(iotId) {
     let entry = this.cache.get(iotId);
     if (!entry) {
-      entry = { properties: {}, report: {}, online: null, updatedAt: 0 };
+      entry = { properties: {}, report: {}, online: null, updatedAt: 0, reportAt: 0 };
       this.cache.set(iotId, entry);
     }
     return entry;
+  }
+
+  /** Time (ms) of the last protobuf report received from a mower, 0 if none. */
+  lastReportAt(iotId) {
+    return this.cache.get(iotId)?.reportAt ?? 0;
   }
 
   /** Last known telemetry (telemetry.js shape), or null if nothing received. */

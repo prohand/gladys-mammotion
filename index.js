@@ -78,9 +78,9 @@ async function refreshMowers() {
   return mowers;
 }
 
-async function pollMower(mower) {
+async function pollMower(mower, { force = false } = {}) {
   lastPollAt.set(mower.iotId, Date.now());
-  const status = await getClient().getStatus(mower);
+  const status = await getClient().getStatus(mower, { force });
   rememberWorkMode(mower, status.workMode);
   logger.debug(`${mower.name}: ${JSON.stringify(status)}`);
   const states = buildMowerStates(gladys, mower, status, config);
@@ -125,7 +125,7 @@ function scheduleRefresh(mower) {
   const timer = setTimeout(async () => {
     refreshTimers.delete(timer);
     try {
-      await pollMower(mower);
+      await pollMower(mower, { force: true });
     } catch (err) {
       logger.warn(`Refresh after command failed for ${mower.name}: ${err.message}`);
     }
@@ -207,7 +207,19 @@ gladys.onSetValue(async (device, feature, value) => {
     throw new Error(`Unknown mower feature ${feature.external_id}`);
   }
   const { mower, key } = target;
-  const command = commandFor(key, value, lastKnownWorkMode(mower));
+  let command;
+  try {
+    command = commandFor(key, value, lastKnownWorkMode(mower));
+  } catch (err) {
+    logger.warn(`${mower.name}: ${err.message}`);
+    scheduleRefresh(mower);
+    throw err;
+  }
+  if (!command) {
+    logger.info(`${mower.name}: nothing to do for ${key} = ${value}`);
+    scheduleRefresh(mower);
+    return;
+  }
   await getClient().sendCommand(mower, command);
   // The mower accepted the order: reflect it now, the refresh confirms it.
   await gladys.publishState(feature.external_id, Number(value) === 1 ? 1 : 0);
@@ -233,7 +245,7 @@ gladys.onAction('test_connection', async () => {
 gladys.onAction('refresh', async () => {
   const mowers = getMowers();
   for (const mower of mowers) {
-    await pollMower(mower);
+    await pollMower(mower, { force: true });
   }
   return {
     en: `${mowers.length} mower(s) refreshed.`,

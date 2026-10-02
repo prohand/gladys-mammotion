@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   buildReportRequestContent,
+  buildSyncContent,
   buildTaskControlContent,
   MOWER_ACTIONS,
   receiverFor,
@@ -101,7 +102,16 @@ test('a report request is an EMBED_SYS LubaMsg carrying a report_info_cfg', () =
   const cfg = decode(decode(msg[10])[38]);
   assert.equal(cfg[1], 0n); // RPT_START
   assert.equal(cfg[5], 1n); // count
-  assert.deepEqual([...cfg[6]], [0, 1, 2, 3, 4]); // packed channels
+  assert.deepEqual([...cfg[6]], [0, 1, 2, 3, 4, 6]); // packed channels, with maintenance
+});
+
+test('a sync is an ESP LubaMsg carrying DevNet.todev_ble_sync = 3', () => {
+  const msg = decode(Buffer.from(buildSyncContent({ userAccount: '42' }), 'base64'));
+  assert.equal(msg[1], 248n); // MSG_CMD_TYPE_ESP
+  assert.equal(msg[2], 7n); // DEV_MOBILEAPP
+  assert.equal(msg[3], 0n); // DEV_COMM_ESP
+  assert.equal(msg[7], 42n);
+  assert.equal(decode(msg[8])[1], 3n);
 });
 
 test('an unknown command is refused', () => {

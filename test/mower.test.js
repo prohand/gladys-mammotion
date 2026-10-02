@@ -104,6 +104,38 @@ test('a charging mower is docked and charging', () => {
   assert.equal(byKey.status, 'Charging');
 });
 
+test('a report shows the job progress, remaining time and charge state', () => {
+  const states = buildMowerStates(
+    gladys,
+    luba,
+    {
+      workMode: WORK_MODES.WORKING,
+      online: true,
+      charging: false,
+      progressPercent: 45,
+      remainingMinutes: 38,
+    },
+    config,
+  );
+  const byKey = Object.fromEntries(
+    states.map((s) => [s.device_feature_external_id.split(':').pop(), s.text ?? s.state]),
+  );
+  assert.equal(byKey.status, 'En tonte (45 %)');
+  assert.equal(byKey['remaining-time'], 38);
+  assert.equal(byKey.charging, 0);
+
+  // Full on the dock: the work mode says READY, charge_state says docked.
+  const docked = buildMowerStates(
+    gladys,
+    luba,
+    { workMode: WORK_MODES.READY, online: true, charging: true },
+    config,
+  );
+  assert.ok(
+    docked.some((s) => s.device_feature_external_id.endsWith(':charging') && s.state === 1),
+  );
+});
+
 test('an offline mower shows "Hors ligne" and unknown values are skipped', () => {
   const states = buildMowerStates(
     gladys,
@@ -117,11 +149,16 @@ test('an offline mower shows "Hors ligne" and unknown values are skipped', () =>
 });
 
 test('commandFor maps the switches to mower commands', () => {
-  assert.equal(commandFor(FEATURE.MOWING, 1, WORK_MODES.CHARGING), 'start');
-  assert.equal(commandFor(FEATURE.MOWING, 1, null), 'start');
   assert.equal(commandFor(FEATURE.MOWING, 1, WORK_MODES.PAUSE), 'resume');
   assert.equal(commandFor(FEATURE.MOWING, 1, WORK_MODES.CHARGING_PAUSE), 'resume');
+  assert.equal(commandFor(FEATURE.MOWING, 1, WORK_MODES.WORKING), null);
+  // A new job needs a route planned by the app: never a bare "start".
+  assert.throws(() => commandFor(FEATURE.MOWING, 1, WORK_MODES.CHARGING), /Mammotion app/);
+  assert.throws(() => commandFor(FEATURE.MOWING, 1, WORK_MODES.READY), /Mammotion app/);
+  assert.throws(() => commandFor(FEATURE.MOWING, 1, null), /unknown/);
   assert.equal(commandFor(FEATURE.MOWING, 0, WORK_MODES.WORKING), 'pause');
+  assert.equal(commandFor(FEATURE.MOWING, 0, null), 'pause');
+  assert.equal(commandFor(FEATURE.MOWING, 0, WORK_MODES.CHARGING), null);
   assert.equal(commandFor(FEATURE.DOCK, 1, WORK_MODES.WORKING), 'dock');
   assert.equal(commandFor(FEATURE.DOCK, 0, WORK_MODES.RETURNING), 'cancelDock');
   assert.throws(() => commandFor(FEATURE.BATTERY, 1, null));

@@ -11,18 +11,24 @@ Chaque tondeuse du compte Mammotion devient un appareil Gladys avec :
 
 | Fonctionnalité   | Type Gladys             | Rôle                                                       |
 | ---------------- | ----------------------- | ---------------------------------------------------------- |
-| Tonte            | interrupteur (commande) | `1` = lancer / reprendre la tonte, `0` = pause             |
+| Tonte            | interrupteur (commande) | `1` = reprendre une tonte en pause, `0` = pause            |
 | Retour à la base | interrupteur (commande) | `1` = retour à la base, `0` = annuler le retour            |
 | État             | texte                   | « En tonte », « En charge », « En pause », « Hors ligne »… |
 | Batterie         | batterie (%)            | niveau de charge                                           |
 | En charge        | batterie (binaire)      | `1` quand la tondeuse charge sur sa base                   |
 | Hauteur de coupe | distance (mm)           | hauteur des lames                                          |
+| Temps restant    | durée (min)             | temps restant de la tonte en cours                         |
 | Temps de tonte   | durée (h)               | compteur total                                             |
 | Distance totale  | distance (km)           | compteur total                                             |
 
 Les valeurs sont lues sur le cloud Mammotion toutes les **`poll_frequency`**
 secondes (réglable dans l'écran de configuration, 60 s par défaut, de 30 à
 3600 s). Après une commande, la tondeuse est relue au bout de 10 s.
+
+Une nouvelle tonte se lance encore depuis l'application Mammotion (il faut
+d'abord planifier un trajet sur la carte : zones, réglages). Un simple
+« start » sans trajet perturbe la tondeuse et fait planter l'application :
+l'intégration le refuse.
 
 Deux boutons sont disponibles dans l'écran de configuration :
 **Tester la connexion** et **Rafraîchir les tondeuses**.
@@ -46,15 +52,21 @@ Deux boutons sont disponibles dans l'écran de configuration :
 - `src/mammotion/aliyun.js` : passerelle Aliyun IoT (signature des requêtes),
   encore utilisée par la plupart des Luba / Yuka.
 - `src/mammotion/mqtt.js` : broker MQTT Mammotion, pour les tondeuses qui ne
-  sont pas sur Aliyun (erreur « user device not bind »). À chaque poll, la
-  tondeuse est invitée à envoyer son état (`todev_report_cfg`) : la réponse
-  arrive en protobuf sur le broker en quelques secondes (`report.js`).
+  sont pas sur Aliyun (erreur « user device not bind »). La tondeuse est
+  invitée à envoyer son état (`todev_report_cfg`) au plus toutes les 5 min,
+  juste après une commande, et jamais quand elle envoie déjà ses rapports
+  (application ouverte) : chaque demande remplace l'abonnement de
+  l'application, qui affiche alors la tondeuse déconnectée. La réponse arrive
+  en protobuf sur le broker en quelques secondes (`report.js`).
+- Avant chaque commande, un « sync » (`DevNet.todev_ble_sync = 3`) réveille la
+  liaison cloud de la tondeuse : sans lui, elle ignore les ordres
+  (« Device not responding »).
 - `src/mammotion/commands.js` + `protobuf.js` : commandes au format protobuf
   (`LubaMsg` → `NavTaskCtrl` : start, pause, resume, stop, dock…). Sauf la
   Luba 1, les tondeuses reçoivent ces commandes sur leur carte de navigation
   (`rcver` = 17).
 - `src/mammotion/report.js` : lecture des rapports protobuf (état, batterie,
-  hauteur de coupe).
+  charge, hauteur de coupe, avancement, temps restant, compteurs).
 - `src/mammotion/telemetry.js` : lecture des propriétés (batterie, état…).
 - `src/devices/mower.js` : l'appareil Gladys et ses fonctionnalités.
 - `index.js` : branchement du SDK Gladys (découverte, poll, commandes, actions).

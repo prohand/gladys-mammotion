@@ -7,6 +7,13 @@ import assert from 'node:assert/strict';
 import { MammotionClient, isAuthError, isRtkBaseStation } from '../src/mammotion/client.js';
 import { HttpError } from '../src/mammotion/http.js';
 import { signHeaders } from '../src/mammotion/aliyun.js';
+import { decodeMessage } from '../src/mammotion/protobuf.js';
+
+// Top-level fields of a base64 LubaMsg (varints as bigints).
+const luba = (content) =>
+  Object.fromEntries(
+    Object.entries(decodeMessage(Buffer.from(content, 'base64'))).map(([k, v]) => [k, v[0]]),
+  );
 
 const realFetch = globalThis.fetch;
 let calls;
@@ -172,6 +179,7 @@ test('getStatus switches to the Mammotion broker when Aliyun says "not bind"', a
   client.mqtt = {
     watch: async (m) => watched.push(m.iotId),
     getStatus: () => ({ battery: 80, workMode: 15, online: true }),
+    lastReportAt: () => 0,
   };
   const mower = { iotId: 'iot-2', name: 'Luba', deviceName: 'dn' };
   on('api-iot.mammotion.com', '/v1/mqtt/rpc/thing/service/invoke', () =>
@@ -181,9 +189,48 @@ test('getStatus switches to the Mammotion broker when Aliyun says "not bind"', a
   assert.equal(status.battery, 80);
   assert.equal(mower.cloud, 'mammotion');
   assert.deepEqual(watched, ['iot-2']);
-  // The mower is asked to push a fresh report.
-  const invoke = calls.find((c) => c.path === '/v1/mqtt/rpc/thing/service/invoke');
-  assert.equal(JSON.parse(invoke.init.body).deviceName, 'dn');
+  // The mower is woken up (sync), then asked to push a fresh report.
+  const invokes = calls.filter((c) => c.path === '/v1/mqtt/rpc/thing/service/invoke');
+  assert.equal(invokes.length, 2);
+  const contents = invokes.map((c) => JSON.parse(c.init.body));
+  assert.equal(contents[1].deviceName, 'dn');
+  assert.equal(luba(contents[0].args.content)[1], 248n); // MSG_CMD_TYPE_ESP (sync)
+  assert.equal(luba(contents[1].args.content)[1], 244n); // EMBED_SYS (report request)
+});
+
+test('report requests are spaced out and skipped while the mower streams', async () => {
+  mockLogin();
+  on('api-iot.mammotion.com', '/v1/mqtt/rpc/thing/service/invoke', () =>
+    json({ code: 0, data: {} }),
+  );
+  const client = new MammotionClient({ email: 'me@example.com', password: 'pw' });
+  let reportAt = 0;
+  client.mqtt = {
+    watch: async () => {},
+    getStatus: () => null,
+    lastReportAt: () => reportAt,
+  };
+  const mower = { iotId: 'iot-2', name: 'Luba', deviceName: 'dn', cloud: 'mammotion' };
+  const reportRequests = () =>
+    calls.filter(
+      (c) =>
+        c.path === '/v1/mqtt/rpc/thing/service/invoke' &&
+        luba(JSON.parse(c.init.body).args.content)[1] === 244n,
+    ).length;
+
+  const status = await client.getStatus(mower);
+  assert.equal(status.battery, null);
+  assert.equal(reportRequests(), 1);
+  // Next poll a minute later: no new request (the cloud quota is limited).
+  await client.getStatus(mower);
+  assert.equal(reportRequests(), 1);
+  // After a command, a refresh is forced.
+  await client.getStatus(mower, { force: true });
+  assert.equal(reportRequests(), 2);
+  // The mower is streaming (app open): never ask, it would cut the stream.
+  reportAt = Date.now();
+  await client.getStatus(mower, { force: true });
+  assert.equal(reportRequests(), 2);
 });
 
 test('getMqttCredentials reads the broker JWT from the iot domain', async () => {
@@ -232,17 +279,38 @@ test('sendCommand falls back to the Aliyun gateway when Mammotion refuses', asyn
   assert.ok(body.params.args.content.length > 10);
 });
 
-test('sendCommand uses the Mammotion API when it accepts the command', async () => {
+test('sendCommand syncs the mower then uses the Mammotion API', async () => {
   mockLogin();
   on('api-iot.mammotion.com', '/v1/mqtt/rpc/thing/service/invoke', () =>
     json({ code: 0, data: { result: 'ok' } }),
   );
   const client = new MammotionClient({ email: 'me@example.com', password: 'pw' });
-  await client.sendCommand(
-    { iotId: 'iot-1', name: 'Luba', productKey: 'pk', deviceName: 'dn' },
-    'start',
-  );
+  const mower = { iotId: 'iot-1', name: 'Luba', productKey: 'pk', deviceName: 'dn' };
+  await client.sendCommand(mower, 'resume');
   assert.equal(calls.filter((c) => c.host.includes('aliyun')).length, 0);
+  const types = () =>
+    calls
+      .filter((c) => c.path === '/v1/mqtt/rpc/thing/service/invoke')
+      .map((c) => luba(JSON.parse(c.init.body).args.content)[1]);
+  assert.deepEqual(types(), [248n, 240n]); // sync, then the NAV command
+  // A second command right after: the mower is still synced.
+  await client.sendCommand(mower, 'pause');
+  assert.deepEqual(types(), [248n, 240n, 240n]);
+});
+
+test('a refused sync does not block the command', async () => {
+  mockLogin();
+  on('api-iot.mammotion.com', '/v1/mqtt/rpc/thing/service/invoke', (c) =>
+    luba(JSON.parse(c.body).args.content)[1] === 248n
+      ? json({ code: 20056, msg: 'Device not responding' })
+      : json({ code: 0, data: {} }),
+  );
+  const client = new MammotionClient({ email: 'me@example.com', password: 'pw' });
+  await client.sendCommand(
+    { iotId: 'iot-1', name: 'Luba', deviceName: 'dn', cloud: 'mammotion' },
+    'dock',
+  );
+  assert.equal(calls.filter((c) => c.path === '/v1/mqtt/rpc/thing/service/invoke').length, 2);
 });
 
 test('an expired session triggers one new login', async () => {
