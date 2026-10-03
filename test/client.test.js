@@ -13,6 +13,7 @@ import {
 import { normalizeConfig } from '../src/config.js';
 import { HttpError } from '../src/mammotion/http.js';
 import { signHeaders } from '../src/mammotion/aliyun.js';
+import { parseHashList, parseZoneList } from '../src/mammotion/report.js';
 import {
   bytesField,
   decodeMessage,
@@ -403,8 +404,16 @@ const MAP = [
 function startJobFixture({ status = {}, answerZones = true, answerHashes = true } = {}) {
   mockLogin();
   const client = new MammotionClient({ email: 'me@example.com', password: 'pw' });
-  client.navTimeoutMs = 20;
   const mqtt = client.mqtt;
+  // Only the requests this fake mower ignores time out quickly: an answered
+  // one must never expire, even on a slow CI runner (the first test of the
+  // file once lost the zone names to a 20 ms timeout).
+  const waitForNav = mqtt.waitForNav.bind(mqtt);
+  mqtt.waitForNav = (iotId, match) => {
+    const ignored =
+      (match === parseZoneList && !answerZones) || (match === parseHashList && !answerHashes);
+    return waitForNav(iotId, match, ignored ? 20 : 2_000);
+  };
   mqtt.watch = async () => {};
   mqtt.devices.set('Luba-VPMBS8RA', { iotId: 'iot-2', productKey: 'pk' });
   mqtt.getStatus = () => status;
