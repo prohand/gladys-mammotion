@@ -54,6 +54,23 @@ test('only the mowing and dock switches and the refresh button are controllable'
   assert.equal(feature(device, FEATURE.REFRESH).type, DEVICE_FEATURE_TYPES.BUTTON.PUSH);
 });
 
+test('only the battery level is in the battery category (Gladys low-battery alert)', () => {
+  // Gladys warns for every feature of the battery category under the threshold,
+  // whatever its type: a charging binary at 0 would be read as "0%".
+  const device = buildMowerDevice(gladys, luba, config);
+  const battery = device.features.filter((f) => f.category === DEVICE_FEATURE_CATEGORIES.BATTERY);
+  assert.deepEqual(
+    battery.map((f) => f.external_id),
+    ['mower:iot-luba-1:battery'],
+  );
+  assert.equal(battery[0].type, DEVICE_FEATURE_TYPES.BATTERY.INTEGER);
+  const charging = feature(device, FEATURE.CHARGING);
+  assert.equal(charging.external_id, 'mower:iot-luba-1:charging-state');
+  assert.equal(charging.category, DEVICE_FEATURE_CATEGORIES.INPUT);
+  assert.equal(charging.type, DEVICE_FEATURE_TYPES.INPUT.BINARY);
+  assert.equal(charging.read_only, true);
+});
+
 test('feature external_ids are unique', () => {
   const device = buildMowerDevice(gladys, luba, config);
   const ids = device.features.map((f) => f.external_id);
@@ -87,7 +104,7 @@ test('a mowing snapshot turns the mowing switch ON', () => {
   );
   assert.equal(byKey.mowing, 1);
   assert.equal(byKey.dock, 0);
-  assert.equal(byKey.charging, 0);
+  assert.equal(byKey['charging-state'], 0);
   assert.equal(byKey.battery, 81);
   assert.equal(byKey['blade-height'], 55);
   assert.equal(byKey['work-time'], 12.5);
@@ -107,7 +124,7 @@ test('a charging mower is docked and charging', () => {
   );
   assert.equal(byKey.mowing, 0);
   assert.equal(byKey.dock, 1);
-  assert.equal(byKey.charging, 1);
+  assert.equal(byKey['charging-state'], 1);
   assert.equal(byKey.status, 'Charging');
 });
 
@@ -129,7 +146,7 @@ test('a report shows the job progress, remaining time and charge state', () => {
   );
   assert.equal(byKey.status, 'En tonte (45 %)');
   assert.equal(byKey['remaining-time'], 38);
-  assert.equal(byKey.charging, 0);
+  assert.equal(byKey['charging-state'], 0);
 
   // Full on the dock: the work mode says READY, charge_state says docked.
   const docked = buildMowerStates(
@@ -139,7 +156,7 @@ test('a report shows the job progress, remaining time and charge state', () => {
     config,
   );
   assert.ok(
-    docked.some((s) => s.device_feature_external_id.endsWith(':charging') && s.state === 1),
+    docked.some((s) => s.device_feature_external_id.endsWith(':charging-state') && s.state === 1),
   );
 
   // Out of a job, the time left of the last job means nothing: 0.

@@ -40,6 +40,12 @@ test('parseProperties reads flat and data-wrapped snapshots', () => {
   assert.equal(status.totalWorkHours, null);
 });
 
+test('parseProperties drops a 0 % battery (a missing value, not a measure)', () => {
+  assert.equal(parseProperties({ batteryPercentage: 0 }).battery, null);
+  assert.equal(parseProperties({ batteryPercentage: '0' }).battery, null);
+  assert.equal(parseProperties({ batteryPercentage: 1 }).battery, 1);
+});
+
 test('parseProperties survives an empty or broken snapshot', () => {
   const status = parseProperties({ items: { networkInfo: { value: '{broken' } } });
   assert.equal(status.battery, null);

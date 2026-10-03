@@ -47,6 +47,13 @@ Chaque tondeuse de votre compte Mammotion apparaît avec :
    jour de l'intégration, cliquez sur **Mettre à jour** dans cet onglet pour
    obtenir les nouvelles fonctionnalités (par exemple le bouton Rafraîchir).
 
+La mesure « En charge » n'est volontairement **pas** dans la catégorie
+batterie. Gladys prévient « niveau de batterie inférieur à X % » pour **toute
+mesure de la catégorie batterie** sous le seuil, quel que soit son type : une
+mesure de charge vaut 0 ou 1, elle était donc lue comme « 0 % ». Elle est
+publiée comme une **entrée binaire** : même valeur oui/non, même usage dans
+une scène, sans fausse alerte.
+
 > Conseil : créez un second compte Mammotion, partagez-lui la tondeuse depuis
 > l'application, et utilisez ce compte ici. Sinon l'application sur votre
 > téléphone peut être déconnectée quand Gladys se connecte.
@@ -73,5 +80,12 @@ Chaque tondeuse de votre compte Mammotion apparaît avec :
 - **La tonte ne démarre pas** : regardez les logs. « The mower did not send
   its zones » : la tondeuse n'a pas répondu, réessayez. « Cannot start mowing
   now » : la tondeuse n'est pas prête (en retour à la base, verrouillée…).
+- **« Le niveau de la batterie de … est inférieur à 20 % (actuel : 0 %) »**
+  alors que la batterie est pleine : c'était l'ancienne mesure « En charge »,
+  rangée dans la catégorie batterie, qui vaut 0 quand la tondeuse n'est pas en
+  charge. La nouvelle mesure « En charge » est une entrée binaire. L'ancienne
+  reste enregistrée sur les tondeuses ajoutées avant : ouvrez l'onglet
+  **Découverte** et cliquez sur **Mettre à jour** sur la tondeuse — Gladys
+  supprime les mesures qui ne sont plus publiées, et l'alerte s'arrête.
 - Pour plus de détails, consultez les logs de l'intégration avec
   `LOG_LEVEL=debug`.

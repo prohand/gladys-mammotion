@@ -7,12 +7,27 @@
 //   - Return to dock  switch  (1 = go home, 0 = cancel the return)
 //   - Refresh         push button (asks the mower for its state now)
 //   - Status          text    (Mowing (45 %), Charging, Paused…)
-//   - Battery         battery %  + Charging binary
+//   - Battery         battery %  + Charging binary (see below)
 //   - Blade height    mm
 //   - Remaining time of the job (min)
 //   - Total mowing time (h) and total distance (km)
 // Values are refreshed by polling, every `poll_frequency` seconds (Gladys
 // calls onPoll every 30 or 60 s, index.js skips the calls that come too early).
+//
+// The Charging feature is deliberately NOT in the `battery` CATEGORY, even
+// though Gladys has a `battery`/`charging` pair for exactly this. The core
+// warns "battery level under X%" for every feature of the `battery` category
+// whose last value is below the threshold, whatever its TYPE (it never reads
+// the type: see device.checkBatteries). A charging sensor holds 0 or 1, so it
+// was read as "0%" and sent a false low-battery alert every Saturday while the
+// mower was off its dock, whatever the real battery level.
+//
+// It is therefore published as `input`/`binary`, the generic read-only binary
+// sensor of Gladys: same 0/1 value, same use in a scene, but outside the
+// category the battery check scans. Its external_id changed with it
+// (`charging-state`, not `charging`), so the old battery-category feature of
+// mowers created before 1.0.10 is never fed again: clicking Update on the
+// Discovery screen deletes it for good.
 // -----------------------------------------------------------------------------
 
 import {
@@ -41,7 +56,9 @@ export const FEATURE = {
   DOCK: 'dock',
   STATUS: 'status',
   BATTERY: 'battery',
-  CHARGING: 'charging',
+  // Not `charging`: that external_id belongs to the battery-category feature of
+  // the versions before 1.0.10, the one that fired the false alert. See above.
+  CHARGING: 'charging-state',
   BLADE_HEIGHT: 'blade-height',
   REMAINING_TIME: 'remaining-time',
   WORK_TIME: 'work-time',
@@ -133,8 +150,9 @@ export function buildMowerDevice(gladys, mower, config) {
       sensor(
         FEATURE.CHARGING,
         name(FEATURE.CHARGING),
-        DEVICE_FEATURE_CATEGORIES.BATTERY,
-        DEVICE_FEATURE_TYPES.BATTERY.CHARGING,
+        // `input`/`binary`, NOT `battery`/`charging`: see the header of this file.
+        DEVICE_FEATURE_CATEGORIES.INPUT,
+        DEVICE_FEATURE_TYPES.INPUT.BINARY,
         { min: 0, max: 1 },
       ),
       sensor(
