@@ -1,6 +1,6 @@
 {
   "name": "gladys-mammotion",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "private": true,
   "description": "Gladys Assistant external integration for Mammotion robot lawn mowers (Luba, Yuka).",
   "type": "module",
