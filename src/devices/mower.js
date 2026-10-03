@@ -4,13 +4,15 @@
 // Gladys has no dedicated "lawn mower" category, so the mower is built from
 // standard features every dashboard already knows how to render:
 //   - Mowing          switch  (1 = start a job or resume a paused one, 0 = pause)
-//   - Return to dock  switch  (1 = go home, 0 = cancel the return)
+//   - Return to dock  switch  (1 = go home, ending a paused job; 0 = cancel the return)
 //   - Refresh         push button (asks the mower for its state now)
 //   - Status          text    (Mowing (45 %), Charging, Paused…)
 //   - Battery         battery %  + Charging binary (see below)
 //   - Blade height    mm
 //   - Remaining time of the job (min)
 //   - Total mowing time (h) and total distance (km)
+//   - Settings of a new job (zones, height, speed…): drop-down lists
+//     (`text`/`select`), see settings.js
 // Values are refreshed by polling, every `poll_frequency` seconds (Gladys
 // calls onPoll every 30 or 60 s, index.js skips the calls that come too early).
 //
@@ -45,6 +47,14 @@ import {
   workModeLabel,
 } from '../mammotion/telemetry.js';
 import { devicePollFrequency } from '../config.js';
+import {
+  getSetting,
+  knownZones,
+  SETTING_KEYS,
+  settingFeatureKey,
+  settingName,
+  settingOptions,
+} from './settings.js';
 
 export const DEVICE_TYPE = 'mower';
 
@@ -195,8 +205,34 @@ export function buildMowerDevice(gladys, mower, config) {
         has_feedback: false,
         keep_history: false,
       },
+      ...SETTING_KEYS.map((key) => ({
+        name: settingName(key, config.language),
+        external_id: ids.feature(settingFeatureKey(key)),
+        category: DEVICE_FEATURE_CATEGORIES.TEXT,
+        type: DEVICE_FEATURE_TYPES.TEXT.SELECT,
+        min: 0,
+        max: 0,
+        read_only: false,
+        // Gladys saves the chosen value itself (last_value_string).
+        has_feedback: false,
+        keep_history: false,
+        supported_options: settingOptions(key, {
+          language: config.language,
+          current: getSetting(mower, key, config),
+          zones: knownZones(mower),
+        }),
+      })),
     ],
   };
+}
+
+/** States of the setting lists: the value selected for this mower. */
+export function buildSettingStates(gladys, mower, config) {
+  const ids = mowerIds(gladys, mower);
+  return SETTING_KEYS.map((key) => ({
+    device_feature_external_id: ids.feature(settingFeatureKey(key)),
+    text: getSetting(mower, key, config),
+  }));
 }
 
 /**
@@ -255,7 +291,7 @@ export function buildMowerStates(gladys, mower, status, config) {
  * @param {string} featureKey one of FEATURE.MOWING / FEATURE.DOCK / FEATURE.REFRESH
  * @param {number} value 0 or 1
  * @param {number|null} workMode last known work mode
- * @returns {'startJob'|'resume'|'pause'|'dock'|'cancelDock'|'refresh'|null} null: nothing to do
+ * @returns {'startJob'|'resume'|'pause'|'dock'|'stopAndDock'|'cancelDock'|'refresh'|null} null: nothing to do
  */
 export function commandFor(featureKey, value, workMode) {
   const on = Number(value) === 1;
@@ -273,7 +309,11 @@ export function commandFor(featureKey, value, workMode) {
     return workMode === null || isMowing(workMode) ? 'pause' : null;
   }
   if (featureKey === FEATURE.DOCK) {
-    return on ? 'dock' : 'cancelDock';
+    if (!on) return 'cancelDock';
+    // A bare "dock" on a paused job brings the mower home but leaves the job
+    // paused, in Gladys and in the app ("Stop" had to be pressed in the app):
+    // the job is ended first, as the app does.
+    return workMode === WORK_MODES.PAUSE ? 'stopAndDock' : 'dock';
   }
   if (featureKey === FEATURE.REFRESH) {
     return 'refresh';

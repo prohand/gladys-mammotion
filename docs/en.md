@@ -9,12 +9,28 @@ follow its battery, status and mowing progress.
 Each mower of your Mammotion account shows up with:
 
 - **Mowing** (switch): on = start a job (or resume the paused one), off = pause;
-- **Return to dock** (switch): on = go back to the dock, off = cancel;
+- **Return to dock** (switch): on = go back to the dock, off = cancel. On a
+  paused job, the job is ended first (like "Stop" in the app), or it would
+  stay paused;
 - **Refresh** (button): asks the mower for its state right now;
 - **Status**: Mowing (45 %), Charging, Paused, Returning to dock, Offline…;
 - **Battery** (%) and **Charging**;
 - **Blade height** (mm), **Remaining mowing time** (min);
-- **Total mowing time** (h), **Total distance** (km).
+- **Total mowing time** (h), **Total distance** (km);
+- the **settings of the next job**, as "Setting – …" lists: zones, blade
+  height, speed, spacing, angle, pattern, perimeter laps, obstacle detection,
+  no-go zone laps, order.
+
+> **Settings on the device** (like the Dreame integration): pick the values
+> in the lists of the mower (dashboard or scene), then turn **Mowing** on: the
+> job starts with these settings.
+>
+> - At first, the lists take the "New mowing job" section of the
+>   configuration.
+> - A choice in a list applies to that mower only.
+> - Saving a **new** value in the configuration applies it to every mower.
+> - The zone list fills with the zones of the map, read when the integration
+>   starts ("Every zone" first).
 
 > **Start mowing** from Gladys (mower "Ready", on its dock or not), the way
 > Home Assistant does:
@@ -56,11 +72,19 @@ same yes/no value, same use in a scene, no false alert.
 ## Scene ideas
 
 - Start mowing every Saturday at 10 am if it does not rain.
+- On Saturday, set "Setting – Zones to mow" to "Front" then turn "Mowing" on;
+  on Wednesday, pick "Every zone".
 - Resume the paused job when the rain stops.
 - Send the mower back to its dock when the rain sensor detects rain.
 - Get a message when the status becomes "Location error".
 
 ## Troubleshooting
+
+- **No "Setting – …" lists on the mower**: **Discovery** tab, **Update**
+  button on the mower.
+- **The zone list only shows "Every zone"**: the mower has not sent its map
+  yet (off, offline). It is read again at the next start of the integration
+  and with each job started from Gladys.
 
 - **"Mammotion cloud unreachable"**: check the email and password, then click
   **Test the connection**.

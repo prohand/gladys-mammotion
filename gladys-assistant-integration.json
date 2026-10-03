@@ -103,8 +103,8 @@
         "fr": "Nouvelle tonte"
       },
       "description": {
-        "en": "Settings used when Gladys starts a new job (Mowing switch ON while the mower is docked or ready). The Mammotion app keeps its own settings on the phone: Gladys cannot read them.",
-        "fr": "Réglages utilisés quand Gladys lance une nouvelle tonte (interrupteur Tonte sur ON, tondeuse à la base ou prête). L'application Mammotion garde ses réglages dans le téléphone : Gladys ne peut pas les lire."
+        "en": "Settings of a new job started from Gladys (Mowing switch ON, mower docked or ready). Each mower also shows them as \"Setting – …\" lists, to change them for that mower only, from the dashboard or a scene. Saving a new value here applies it to every mower. The Mammotion app keeps its own settings on the phone: Gladys cannot read them.",
+        "fr": "Réglages d'une nouvelle tonte lancée par Gladys (interrupteur Tonte sur ON, tondeuse à la base ou prête). Chaque tondeuse les affiche aussi en listes « Réglage – … », pour les changer pour elle seule, depuis le tableau de bord ou une scène. Enregistrer ici une nouvelle valeur l'applique à toutes les tondeuses. L'application Mammotion garde ses réglages dans le téléphone : Gladys ne peut pas les lire."
       }
     },
     {
@@ -135,15 +135,92 @@
     },
     {
       "key": "mowing_speed",
-      "type": "number",
+      "type": "select",
       "label": {
         "en": "Speed (m/s)",
         "fr": "Vitesse (m/s)"
       },
       "required": false,
-      "default": 0.6,
-      "min": 0.2,
-      "max": 1.2
+      "default": "0.6",
+      "options": [
+        {
+          "value": "0.2",
+          "label": {
+            "en": "0.2 m/s",
+            "fr": "0,2 m/s"
+          }
+        },
+        {
+          "value": "0.3",
+          "label": {
+            "en": "0.3 m/s",
+            "fr": "0,3 m/s"
+          }
+        },
+        {
+          "value": "0.4",
+          "label": {
+            "en": "0.4 m/s",
+            "fr": "0,4 m/s"
+          }
+        },
+        {
+          "value": "0.5",
+          "label": {
+            "en": "0.5 m/s",
+            "fr": "0,5 m/s"
+          }
+        },
+        {
+          "value": "0.6",
+          "label": {
+            "en": "0.6 m/s",
+            "fr": "0,6 m/s"
+          }
+        },
+        {
+          "value": "0.7",
+          "label": {
+            "en": "0.7 m/s",
+            "fr": "0,7 m/s"
+          }
+        },
+        {
+          "value": "0.8",
+          "label": {
+            "en": "0.8 m/s",
+            "fr": "0,8 m/s"
+          }
+        },
+        {
+          "value": "0.9",
+          "label": {
+            "en": "0.9 m/s",
+            "fr": "0,9 m/s"
+          }
+        },
+        {
+          "value": "1.0",
+          "label": {
+            "en": "1.0 m/s",
+            "fr": "1,0 m/s"
+          }
+        },
+        {
+          "value": "1.1",
+          "label": {
+            "en": "1.1 m/s",
+            "fr": "1,1 m/s"
+          }
+        },
+        {
+          "value": "1.2",
+          "label": {
+            "en": "1.2 m/s",
+            "fr": "1,2 m/s"
+          }
+        }
+      ]
     },
     {
       "key": "line_spacing",

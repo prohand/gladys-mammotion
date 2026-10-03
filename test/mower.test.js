@@ -37,9 +37,11 @@ test('the mower device uses a poll_frequency accepted by Gladys (ms)', () => {
   assert.equal(device.external_id, 'mower:iot-luba-1');
 });
 
-test('only the mowing and dock switches and the refresh button are controllable', () => {
+test('only the switches, the refresh button and the setting lists are controllable', () => {
   const device = buildMowerDevice(gladys, luba, config);
-  const writable = device.features.filter((f) => !f.read_only).map((f) => f.external_id);
+  const writable = device.features
+    .filter((f) => !f.read_only && f.type !== DEVICE_FEATURE_TYPES.TEXT.SELECT)
+    .map((f) => f.external_id);
   assert.deepEqual(writable.sort(), [
     'mower:iot-luba-1:dock',
     'mower:iot-luba-1:mowing',
@@ -196,6 +198,8 @@ test('commandFor maps the switches to mower commands', () => {
   assert.equal(commandFor(FEATURE.MOWING, 0, null), 'pause');
   assert.equal(commandFor(FEATURE.MOWING, 0, WORK_MODES.CHARGING), null);
   assert.equal(commandFor(FEATURE.DOCK, 1, WORK_MODES.WORKING), 'dock');
+  // A paused job is ended before going home, or it stays paused in the app.
+  assert.equal(commandFor(FEATURE.DOCK, 1, WORK_MODES.PAUSE), 'stopAndDock');
   assert.equal(commandFor(FEATURE.DOCK, 0, WORK_MODES.RETURNING), 'cancelDock');
   assert.equal(commandFor(FEATURE.REFRESH, 1, null), 'refresh');
   assert.throws(() => commandFor(FEATURE.BATTERY, 1, null));

@@ -27,6 +27,12 @@ const luba = (content) =>
     Object.entries(decodeMessage(Buffer.from(content, 'base64'))).map(([k, v]) => [k, v[0]]),
   );
 
+// NavTaskCtrl.action of a base64 task control command.
+const taskAction = (content) => {
+  const nav = decodeMessage(Buffer.from(content, 'base64'))[11][0];
+  return decodeMessage(decodeMessage(nav)[37][0])[2][0];
+};
+
 const realFetch = globalThis.fetch;
 let calls;
 let routes;
@@ -310,6 +316,23 @@ test('sendCommand syncs the mower then uses the Mammotion API', async () => {
   assert.deepEqual(types(), [248n, 240n, 240n]);
 });
 
+test('sendCommands sends stop then dock, in that order', async () => {
+  mockLogin();
+  on('api-iot.mammotion.com', '/v1/mqtt/rpc/thing/service/invoke', () =>
+    json({ code: 0, data: {} }),
+  );
+  const client = new MammotionClient({ email: 'me@example.com', password: 'pw' });
+  const mower = { iotId: 'iot-1', name: 'Luba', productKey: 'pk', deviceName: 'dn' };
+  await client.sendCommands(mower, ['stop', 'dock'], 0);
+  const navs = calls
+    .filter((c) => c.path === '/v1/mqtt/rpc/thing/service/invoke')
+    .map((c) => JSON.parse(c.init.body).args.content)
+    .filter((content) => luba(content)[1] === 240n);
+  assert.equal(navs.length, 2);
+  const actions = navs.map((content) => taskAction(content));
+  assert.deepEqual(actions, [4n, 5n]);
+});
+
 test('a refused sync does not block the command', async () => {
   mockLogin();
   on('api-iot.mammotion.com', '/v1/mqtt/rpc/thing/service/invoke', (c) =>
@@ -474,6 +497,18 @@ test('startJob plans a route over every zone of the map, named or not, then star
   const route = sentRoute();
   assert.equal(route[7][0], 60n); // blade height of the configuration
   assert.deepEqual(zoneHashes(route), [11n, 2n ** 63n + 5n, 21n]);
+});
+
+test('readZones reads the zones of the map and reports them', async () => {
+  const { client, mower, sent } = startJobFixture();
+  const reported = [];
+  client.onZones = (m, zones) => reported.push([m.iotId, zones.map((z) => z.name)]);
+  const zones = await client.readZones(mower);
+  assert.equal(zones.length, 3);
+  assert.deepEqual(reported, [['iot-2', zones.map((z) => z.name)]]);
+  // Only zone requests: no route, no start.
+  assert.ok(!sent.includes(34) && !sent.includes(37));
+  await assert.rejects(client.readZones({ ...mower, cloud: 'aliyun' }), /does not list/);
 });
 
 test('startJob reads the type of a map element only once', async () => {

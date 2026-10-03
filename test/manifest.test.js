@@ -5,7 +5,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { DEFAULT_CONFIG, POLL_FREQUENCY_MAX, POLL_FREQUENCY_MIN } from '../src/config.js';
+import {
+  DEFAULT_CONFIG,
+  MOWING_BOUNDS,
+  normalizeConfig,
+  POLL_FREQUENCY_MAX,
+  POLL_FREQUENCY_MIN,
+} from '../src/config.js';
 
 const manifest = JSON.parse(
   await readFile(new URL('../gladys-assistant-integration.json', import.meta.url), 'utf8'),
@@ -32,7 +38,12 @@ test('declaring catalog categories requires Gladys >= 4.86.0', () => {
 test('config_schema defaults stay consistent with DEFAULT_CONFIG', () => {
   for (const field of manifest.config_schema) {
     if (field.default !== undefined) {
-      assert.equal(DEFAULT_CONFIG[field.key], field.default, `DEFAULT_CONFIG.${field.key}`);
+      // A select holds strings: the speed list ("0.6") stands for a number (0.6).
+      assert.equal(
+        String(DEFAULT_CONFIG[field.key]),
+        String(field.default),
+        `DEFAULT_CONFIG.${field.key}`,
+      );
     }
   }
 });
@@ -70,4 +81,16 @@ test('manifest version and docker image tag stay in lockstep', async () => {
   const pkg = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
   assert.equal(manifest.version, pkg.version);
   assert.ok(manifest.docker_image.endsWith(`:${manifest.version}`));
+});
+
+test('every speed of the list is kept as is by the config', () => {
+  // A number field only took 0.2 and 1.2: the form steps by 1 from the minimum.
+  const field = manifest.config_schema.find((f) => f.key === 'mowing_speed');
+  assert.equal(field.type, 'select');
+  const [min, max] = MOWING_BOUNDS.mowing_speed;
+  assert.equal(Number(field.options[0].value), min);
+  assert.equal(Number(field.options.at(-1).value), max);
+  for (const { value } of field.options) {
+    assert.equal(normalizeConfig({ mowing_speed: value }).mowing_speed, Number(value));
+  }
 });
