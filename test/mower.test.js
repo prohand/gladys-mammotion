@@ -196,6 +196,8 @@ test('commandFor maps the switches to mower commands', () => {
   assert.equal(commandFor(FEATURE.MOWING, 0, null), 'pause');
   assert.equal(commandFor(FEATURE.MOWING, 0, WORK_MODES.CHARGING), null);
   assert.equal(commandFor(FEATURE.DOCK, 1, WORK_MODES.WORKING), 'dock');
+  // A paused job is ended before going home, or it stays paused in the app.
+  assert.equal(commandFor(FEATURE.DOCK, 1, WORK_MODES.PAUSE), 'stopAndDock');
   assert.equal(commandFor(FEATURE.DOCK, 0, WORK_MODES.RETURNING), 'cancelDock');
   assert.equal(commandFor(FEATURE.REFRESH, 1, null), 'refresh');
   assert.throws(() => commandFor(FEATURE.BATTERY, 1, null));

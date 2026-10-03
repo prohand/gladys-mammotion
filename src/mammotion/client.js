@@ -58,6 +58,8 @@ const REPORT_REQUEST_INTERVAL_MS = 5 * 60_000;
 const REPORT_FRESH_MS = 15_000;
 // Wait for the answer to a zone list or route request.
 const NAV_ANSWER_TIMEOUT_MS = 15_000;
+// Gap between two commands sent in a row (sendCommands).
+const COMMAND_GAP_MS = 2_000;
 // A map element list in more frames than this is not believed.
 const MAX_HASH_FRAMES = 50;
 // DEV_NAVIGATION: the mowers that list their zones (all but the Luba 1).
@@ -478,6 +480,19 @@ export class MammotionClient {
       await this.sync(session, mower);
       await this.invoke(session, mower, content);
     });
+  }
+
+  /**
+   * Send several task control commands in a row, with a short gap so the
+   * mower handles each one (e.g. "stop" then "dock" on a paused job).
+   */
+  async sendCommands(mower, commands, gapMs = COMMAND_GAP_MS) {
+    for (const [i, command] of commands.entries()) {
+      if (i > 0 && gapMs > 0) {
+        await new Promise((resolve) => setTimeout(resolve, gapMs));
+      }
+      await this.sendCommand(mower, command);
+    }
   }
 
   /**

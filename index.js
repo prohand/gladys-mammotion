@@ -245,6 +245,18 @@ gladys.onSetValue(async (device, feature, value) => {
       });
     return;
   }
+  if (command === 'stopAndDock') {
+    // Two orders with a gap: longer than the 5 s Gladys waits for an answer.
+    await gladys.publishState(feature.external_id, 1);
+    getClient()
+      .sendCommands(mower, ['stop', 'dock'])
+      .then(() => scheduleRefresh(mower))
+      .catch(async (err) => {
+        logger.warn(`${mower.name}: return to dock failed: ${err.message}`);
+        await gladys.publishState(feature.external_id, 0).catch(() => {});
+      });
+    return;
+  }
   await getClient().sendCommand(mower, command);
   // The mower accepted the order: reflect it now, the refresh confirms it.
   await gladys.publishState(feature.external_id, on);

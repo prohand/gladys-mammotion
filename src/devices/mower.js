@@ -4,7 +4,7 @@
 // Gladys has no dedicated "lawn mower" category, so the mower is built from
 // standard features every dashboard already knows how to render:
 //   - Mowing          switch  (1 = start a job or resume a paused one, 0 = pause)
-//   - Return to dock  switch  (1 = go home, 0 = cancel the return)
+//   - Return to dock  switch  (1 = go home, ending a paused job; 0 = cancel the return)
 //   - Refresh         push button (asks the mower for its state now)
 //   - Status          text    (Mowing (45 %), Charging, Paused…)
 //   - Battery         battery %  + Charging binary (see below)
@@ -255,7 +255,7 @@ export function buildMowerStates(gladys, mower, status, config) {
  * @param {string} featureKey one of FEATURE.MOWING / FEATURE.DOCK / FEATURE.REFRESH
  * @param {number} value 0 or 1
  * @param {number|null} workMode last known work mode
- * @returns {'startJob'|'resume'|'pause'|'dock'|'cancelDock'|'refresh'|null} null: nothing to do
+ * @returns {'startJob'|'resume'|'pause'|'dock'|'stopAndDock'|'cancelDock'|'refresh'|null} null: nothing to do
  */
 export function commandFor(featureKey, value, workMode) {
   const on = Number(value) === 1;
@@ -273,7 +273,11 @@ export function commandFor(featureKey, value, workMode) {
     return workMode === null || isMowing(workMode) ? 'pause' : null;
   }
   if (featureKey === FEATURE.DOCK) {
-    return on ? 'dock' : 'cancelDock';
+    if (!on) return 'cancelDock';
+    // A bare "dock" on a paused job brings the mower home but leaves the job
+    // paused, in Gladys and in the app ("Stop" had to be pressed in the app):
+    // the job is ended first, as the app does.
+    return workMode === WORK_MODES.PAUSE ? 'stopAndDock' : 'dock';
   }
   if (featureKey === FEATURE.REFRESH) {
     return 'refresh';

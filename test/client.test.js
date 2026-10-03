@@ -27,6 +27,12 @@ const luba = (content) =>
     Object.entries(decodeMessage(Buffer.from(content, 'base64'))).map(([k, v]) => [k, v[0]]),
   );
 
+// NavTaskCtrl.action of a base64 task control command.
+const taskAction = (content) => {
+  const nav = decodeMessage(Buffer.from(content, 'base64'))[11][0];
+  return decodeMessage(decodeMessage(nav)[37][0])[2][0];
+};
+
 const realFetch = globalThis.fetch;
 let calls;
 let routes;
@@ -308,6 +314,23 @@ test('sendCommand syncs the mower then uses the Mammotion API', async () => {
   // A second command right after: the mower is still synced.
   await client.sendCommand(mower, 'pause');
   assert.deepEqual(types(), [248n, 240n, 240n]);
+});
+
+test('sendCommands sends stop then dock, in that order', async () => {
+  mockLogin();
+  on('api-iot.mammotion.com', '/v1/mqtt/rpc/thing/service/invoke', () =>
+    json({ code: 0, data: {} }),
+  );
+  const client = new MammotionClient({ email: 'me@example.com', password: 'pw' });
+  const mower = { iotId: 'iot-1', name: 'Luba', productKey: 'pk', deviceName: 'dn' };
+  await client.sendCommands(mower, ['stop', 'dock'], 0);
+  const navs = calls
+    .filter((c) => c.path === '/v1/mqtt/rpc/thing/service/invoke')
+    .map((c) => JSON.parse(c.init.body).args.content)
+    .filter((content) => luba(content)[1] === 240n);
+  assert.equal(navs.length, 2);
+  const actions = navs.map((content) => taskAction(content));
+  assert.deepEqual(actions, [4n, 5n]);
 });
 
 test('a refused sync does not block the command', async () => {
