@@ -43,6 +43,12 @@ Each mower of your Mammotion account shows up with:
    integration, click **Update** in this tab to get the new features (the
    Refresh button for instance).
 
+The **Charging** feature is deliberately **not** in the battery category.
+Gladys warns "battery level under X%" for **every feature of the battery
+category** below the threshold, whatever its type: a charging feature holds 0
+or 1, so it was read as "0%". It is published as a **binary input** instead:
+same yes/no value, same use in a scene, no false alert.
+
 > Tip: create a second Mammotion account, share the mower with it from the
 > app, and use that account here. Otherwise the app on your phone may be
 > logged out when Gladys connects.
@@ -68,4 +74,11 @@ Each mower of your Mammotion account shows up with:
 - **Mowing does not start**: read the logs. "The mower did not send its
   zones": the mower did not answer, try again. "Cannot start mowing now": the
   mower is not ready (returning to its dock, locked…).
+- **"The battery level of … is under 20% (current: 0%)"** while the battery
+  is full: that was the old **Charging** feature, filed in the battery
+  category, which holds 0 whenever the mower is not charging. The new
+  **Charging** feature is a binary input. The old one stays on the mowers
+  added before: open the **Discovery** tab and click **Update** on the mower —
+  Gladys deletes the features that are no longer published, and the alert
+  stops.
 - For details, read the integration logs with `LOG_LEVEL=debug`.

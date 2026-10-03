@@ -16,7 +16,7 @@ Chaque tondeuse du compte Mammotion devient un appareil Gladys avec :
 | Rafraîchir       | bouton poussoir         | demande son état à la tondeuse                             |
 | État             | texte                   | « En tonte », « En charge », « En pause », « Hors ligne »… |
 | Batterie         | batterie (%)            | niveau de charge                                           |
-| En charge        | batterie (binaire)      | `1` quand la tondeuse charge sur sa base                   |
+| En charge        | entrée binaire          | `1` quand la tondeuse charge sur sa base                   |
 | Hauteur de coupe | distance (mm)           | hauteur des lames                                          |
 | Temps restant    | durée (min)             | temps restant de la tonte en cours                         |
 | Temps de tonte   | durée (h)               | compteur total                                             |

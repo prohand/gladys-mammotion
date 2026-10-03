@@ -125,9 +125,12 @@ export function parseProperties(snapshot) {
   const workSeconds = toNumber(networkInfo.wt_sec);
   const mileageMeters = toNumber(networkInfo.mileage);
   const firmware = property(snapshot, 'deviceVersion');
+  // A mower that answers is not at 0 %: 0 is a missing value (same rule as the
+  // protobuf reports), and publishing it fires the Gladys low-battery alert.
+  const battery = toNumber(property(snapshot, 'batteryPercentage'));
 
   return {
-    battery: toNumber(property(snapshot, 'batteryPercentage')),
+    battery: battery !== null && battery > 0 && battery <= 100 ? battery : null,
     workMode: toNumber(property(snapshot, 'deviceState')),
     online: iotState === null ? null : iotState === 1,
     bladeHeightMm: toNumber(property(snapshot, 'knifeHeight')),
