@@ -137,8 +137,10 @@ export class MammotionClient {
   /**
    * @param {{ email: string, password: string, onMqttUpdate?: (iotId: string) => void }} options
    */
-  constructor({ email, password, onMqttUpdate }) {
+  constructor({ email, password, onMqttUpdate, onZones }) {
     this.email = email;
+    // Called with (mower, zones) each time the zones of a map are read.
+    this.onZones = onZones;
     this.password = password;
     this.session = null;
     this.aliyun = null;
@@ -506,7 +508,7 @@ export class MammotionClient {
    * @param {object} settings normalized configuration (see config.js)
    */
   async startJob(mower, settings) {
-    if (mower.cloud !== 'mammotion' || receiverFor(mower) !== NAVIGATION_BOARD) {
+    if (!canPlanJobs(mower)) {
       throw new Error('This mower cannot start a new job from Gladys: use the Mammotion app');
     }
     await this.mqtt.watch(mower);
@@ -548,6 +550,21 @@ export class MammotionClient {
   }
 
   /**
+   * Read the zones of the map (for the "Zones to mow" list of the device).
+   * @returns {Promise<Array<{ hash: bigint, name: string }>>}
+   */
+  async readZones(mower) {
+    if (!canPlanJobs(mower)) {
+      throw new Error('This mower does not list its zones');
+    }
+    await this.mqtt.watch(mower);
+    return this.withRetry(async () => {
+      const session = await this.ensureSession();
+      return this.listZones(session, mower);
+    });
+  }
+
+  /**
    * Every mowing zone of the map, named or not. The zone name list of the
    * mower only holds the zones named in the app: the full list comes from the
    * hashes of the map elements, whose type is read once (zones, no-go zones,
@@ -569,7 +586,9 @@ export class MammotionClient {
           named ? 'No zone on the mower map' : 'The mower did not send its zones, try again',
         );
       }
-      return named.map((z, i) => ({ hash: z.hash, name: z.name || `zone ${i + 1}` }));
+      const zones = named.map((z, i) => ({ hash: z.hash, name: z.name || `zone ${i + 1}` }));
+      this.onZones?.(mower, zones);
+      return zones;
     }
     const names = new Map((named ?? []).map((z) => [z.hash, z.name]));
     const known = this.mapElements.get(mower.iotId) ?? new Map();
@@ -602,6 +621,7 @@ export class MammotionClient {
     if (zones.length === 0) {
       throw new Error('No zone on the mower map');
     }
+    this.onZones?.(mower, zones);
     return zones;
   }
 
@@ -703,6 +723,11 @@ export class MammotionClient {
  * Zones to mow: those named in the configuration (case does not matter), or
  * all of them.
  */
+/** Only the mowers of the Mammotion broker with a navigation board plan jobs. */
+export function canPlanJobs(mower) {
+  return mower.cloud === 'mammotion' && receiverFor(mower) === NAVIGATION_BOARD;
+}
+
 export function selectZones(zones, settings) {
   const wanted = mowingZoneNames(settings);
   if (wanted.length === 0) {

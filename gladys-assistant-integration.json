@@ -103,8 +103,8 @@
         "fr": "Nouvelle tonte"
       },
       "description": {
-        "en": "Settings used when Gladys starts a new job (Mowing switch ON while the mower is docked or ready). The Mammotion app keeps its own settings on the phone: Gladys cannot read them.",
-        "fr": "Réglages utilisés quand Gladys lance une nouvelle tonte (interrupteur Tonte sur ON, tondeuse à la base ou prête). L'application Mammotion garde ses réglages dans le téléphone : Gladys ne peut pas les lire."
+        "en": "Settings of a new job started from Gladys (Mowing switch ON, mower docked or ready). Each mower also shows them as \"Setting – …\" lists, to change them for that mower only, from the dashboard or a scene. Saving a new value here applies it to every mower. The Mammotion app keeps its own settings on the phone: Gladys cannot read them.",
+        "fr": "Réglages d'une nouvelle tonte lancée par Gladys (interrupteur Tonte sur ON, tondeuse à la base ou prête). Chaque tondeuse les affiche aussi en listes « Réglage – … », pour les changer pour elle seule, depuis le tableau de bord ou une scène. Enregistrer ici une nouvelle valeur l'applique à toutes les tondeuses. L'application Mammotion garde ses réglages dans le téléphone : Gladys ne peut pas les lire."
       }
     },
     {

@@ -21,6 +21,16 @@ Chaque tondeuse du compte Mammotion devient un appareil Gladys avec :
 | Temps restant    | durée (min)             | temps restant de la tonte en cours                         |
 | Temps de tonte   | durée (h)               | compteur total                                             |
 | Distance totale  | distance (km)           | compteur total                                             |
+| Réglage – …      | liste (`text`/`select`) | réglages de la prochaine tonte (²)                         |
+
+(²) Zones, hauteur, vitesse, espacement, angle, mode, tours de périmètre,
+détection d'obstacle, tours des zones interdites, ordre (`src/devices/settings.js`).
+Les listes partent de la section « Nouvelle tonte » de la configuration ; un
+choix sur l'appareil vaut pour cette tondeuse (Gladys garde la valeur dans
+`last_value_string`, relue au démarrage) ; une nouvelle valeur enregistrée
+dans la configuration s'applique à toutes. Les zones de la carte sont lues
+une fois au démarrage (`readZones`) puis à chaque tonte, et la liste est
+republiée (`supported_options`). Libellés pris dans le `config_schema`.
 
 (¹) Sur une tonte en pause, « stop » (`NavTaskCtrl` action 4) part avant
 « dock » (action 5) : un simple « dock » ramène la tondeuse mais laisse la

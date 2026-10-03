@@ -11,6 +11,8 @@
 //   - Blade height    mm
 //   - Remaining time of the job (min)
 //   - Total mowing time (h) and total distance (km)
+//   - Settings of a new job (zones, height, speed…): drop-down lists
+//     (`text`/`select`), see settings.js
 // Values are refreshed by polling, every `poll_frequency` seconds (Gladys
 // calls onPoll every 30 or 60 s, index.js skips the calls that come too early).
 //
@@ -45,6 +47,14 @@ import {
   workModeLabel,
 } from '../mammotion/telemetry.js';
 import { devicePollFrequency } from '../config.js';
+import {
+  getSetting,
+  knownZones,
+  SETTING_KEYS,
+  settingFeatureKey,
+  settingName,
+  settingOptions,
+} from './settings.js';
 
 export const DEVICE_TYPE = 'mower';
 
@@ -195,8 +205,34 @@ export function buildMowerDevice(gladys, mower, config) {
         has_feedback: false,
         keep_history: false,
       },
+      ...SETTING_KEYS.map((key) => ({
+        name: settingName(key, config.language),
+        external_id: ids.feature(settingFeatureKey(key)),
+        category: DEVICE_FEATURE_CATEGORIES.TEXT,
+        type: DEVICE_FEATURE_TYPES.TEXT.SELECT,
+        min: 0,
+        max: 0,
+        read_only: false,
+        // Gladys saves the chosen value itself (last_value_string).
+        has_feedback: false,
+        keep_history: false,
+        supported_options: settingOptions(key, {
+          language: config.language,
+          current: getSetting(mower, key, config),
+          zones: knownZones(mower),
+        }),
+      })),
     ],
   };
+}
+
+/** States of the setting lists: the value selected for this mower. */
+export function buildSettingStates(gladys, mower, config) {
+  const ids = mowerIds(gladys, mower);
+  return SETTING_KEYS.map((key) => ({
+    device_feature_external_id: ids.feature(settingFeatureKey(key)),
+    text: getSetting(mower, key, config),
+  }));
 }
 
 /**

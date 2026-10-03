@@ -499,6 +499,18 @@ test('startJob plans a route over every zone of the map, named or not, then star
   assert.deepEqual(zoneHashes(route), [11n, 2n ** 63n + 5n, 21n]);
 });
 
+test('readZones reads the zones of the map and reports them', async () => {
+  const { client, mower, sent } = startJobFixture();
+  const reported = [];
+  client.onZones = (m, zones) => reported.push([m.iotId, zones.map((z) => z.name)]);
+  const zones = await client.readZones(mower);
+  assert.equal(zones.length, 3);
+  assert.deepEqual(reported, [['iot-2', zones.map((z) => z.name)]]);
+  // Only zone requests: no route, no start.
+  assert.ok(!sent.includes(34) && !sent.includes(37));
+  await assert.rejects(client.readZones({ ...mower, cloud: 'aliyun' }), /does not list/);
+});
+
 test('startJob reads the type of a map element only once', async () => {
   const { client, mower, sent } = startJobFixture();
   await client.startJob(mower, normalizeConfig());

@@ -17,7 +17,22 @@ Chaque tondeuse de votre compte Mammotion apparaît avec :
 - **État** : En tonte (45 %), En charge, En pause, Retour à la base, Hors ligne… ;
 - **Batterie** (%) et **En charge** ;
 - **Hauteur de coupe** (mm), **Temps de tonte restant** (min) ;
-- **Temps de tonte total** (h), **Distance totale** (km).
+- **Temps de tonte total** (h), **Distance totale** (km) ;
+- les **réglages de la prochaine tonte**, en listes « Réglage – … » : zones,
+  hauteur de coupe, vitesse, espacement, angle, mode de trajectoire, tours de
+  périmètre, détection d'obstacle, tours des zones interdites, ordre.
+
+> **Réglages sur l'appareil** (comme l'intégration Dreame) : choisissez les
+> valeurs dans les listes de la tondeuse (tableau de bord ou scène), puis
+> allumez **Tonte** : la tonte part avec ces réglages.
+>
+> - Au départ, les listes reprennent la section « Nouvelle tonte » de la
+>   configuration.
+> - Un choix dans une liste vaut pour cette tondeuse seulement.
+> - Enregistrer une **nouvelle** valeur dans la configuration l'applique à
+>   toutes les tondeuses.
+> - La liste des zones se remplit avec les zones de la carte, lues au
+>   démarrage de l'intégration (« Toutes les zones » en premier).
 
 > **Lancer une tonte** depuis Gladys (tondeuse « Prête », sur sa base ou non),
 > comme le fait Home Assistant :
@@ -47,7 +62,8 @@ Chaque tondeuse de votre compte Mammotion apparaît avec :
    tondeuses trouvées s'affiche.
 5. Ajoutez vos tondeuses depuis l'onglet **Découverte**. Après une mise à
    jour de l'intégration, cliquez sur **Mettre à jour** dans cet onglet pour
-   obtenir les nouvelles fonctionnalités (par exemple le bouton Rafraîchir).
+   obtenir les nouvelles fonctionnalités (par exemple les listes de
+   réglages).
 
 La mesure « En charge » n'est volontairement **pas** dans la catégorie
 batterie. Gladys prévient « niveau de batterie inférieur à X % » pour **toute
@@ -63,11 +79,19 @@ une scène, sans fausse alerte.
 ## Exemples de scènes
 
 - Lancer une tonte chaque samedi à 10 h s'il ne pleut pas.
+- Le samedi, régler « Réglage – Zones à tondre » sur « Devant » puis allumer
+  « Tonte » ; le mercredi, choisir « Toutes les zones ».
 - Reprendre la tonte en pause quand la pluie s'arrête.
 - Renvoyer la tondeuse à la base quand le capteur de pluie détecte de la pluie.
 - Recevoir un message quand l'état passe à « Erreur de position ».
 
 ## Dépannage
+
+- **Pas de listes « Réglage – … » sur la tondeuse** : onglet **Découverte**,
+  bouton **Mettre à jour** sur la tondeuse.
+- **La liste des zones ne montre que « Toutes les zones »** : la tondeuse
+  n'a pas encore envoyé sa carte (éteinte, hors réseau). Elle est relue au
+  prochain démarrage de l'intégration et à chaque tonte lancée par Gladys.
 
 - **« Cloud Mammotion injoignable »** : vérifiez l'email et le mot de passe,
   puis cliquez sur **Tester la connexion**.

@@ -25,8 +25,18 @@ import {
   rememberWorkMode,
   setMowers,
 } from './src/devices/index.js';
-import { buildMowerStates, commandFor } from './src/devices/mower.js';
-import { isAuthError, MammotionClient } from './src/mammotion/client.js';
+import { buildMowerStates, buildSettingStates, commandFor, mowerIds } from './src/devices/mower.js';
+import {
+  applyConfigChanges,
+  knownZones,
+  loadMowerSettings,
+  mowerSettings,
+  rememberZones,
+  setSetting,
+  settingFeatureKey,
+  settingKeyOf,
+} from './src/devices/settings.js';
+import { canPlanJobs, isAuthError, MammotionClient } from './src/mammotion/client.js';
 
 const gladys = new GladysIntegration();
 
@@ -55,6 +65,7 @@ function getClient() {
       email: config.email,
       password: config.password,
       onMqttUpdate: (iotId) => publishPushedState(iotId).catch(() => {}),
+      onZones: (mower, zones) => onZonesRead(mower, zones),
     });
   }
   return client;
@@ -76,8 +87,55 @@ async function refreshMowers() {
   const mowers = await getClient().listMowers();
   setMowers(mowers);
   logger.info(`${mowers.length} mower(s) found on the Mammotion account`);
+  for (const mower of mowers) {
+    loadMowerSettings(mower, config, (key) => storedSetting(mower, key));
+  }
   await gladys.publishDiscoveredDevices(buildDiscoveredDevices(gladys, config));
+  await publishSettings(mowers);
   return mowers;
+}
+
+// --- Settings of a new job, shown on the device (src/devices/settings.js) ----
+
+/** Value Gladys keeps for a setting list of a created mower, if any. */
+function storedSetting(mower, key) {
+  const ids = mowerIds(gladys, mower);
+  const device = (gladys.devices ?? []).find((d) => d.external_id === ids.device);
+  const feature = device?.features?.find(
+    (f) => f.external_id === ids.feature(settingFeatureKey(key)),
+  );
+  return feature?.last_value_string;
+}
+
+// Show the selected values in the lists. A mower not created in Gladys yet
+// has no feature: its states are refused, nothing to worry about.
+async function publishSettings(mowers) {
+  for (const mower of mowers) {
+    await gladys
+      .publishStates(buildSettingStates(gladys, mower, config))
+      .catch((err) => logger.debug(`${mower.name}: settings not published: ${err.message}`));
+  }
+}
+
+// The zones of a map were read: refresh the "Zones to mow" list.
+function onZonesRead(mower, zones) {
+  const names = zones.map((z) => z.name);
+  if (rememberZones(mower, names)) {
+    logger.info(`${mower.name}: zones ${names.join(', ')}`);
+    gladys
+      .publishDiscoveredDevices(buildDiscoveredDevices(gladys, config))
+      .catch((err) => logger.warn(`Zone list not published: ${err.message}`));
+  }
+}
+
+// Read the zones once per mower, in the background, so the list is full
+// before the first job.
+function readZonesOnce(mowers) {
+  for (const mower of mowers.filter((m) => canPlanJobs(m) && !knownZones(m))) {
+    getClient()
+      .readZones(mower)
+      .catch((err) => logger.warn(`${mower.name}: zones not read: ${err.message}`));
+  }
 }
 
 async function pollMower(mower, { force = false } = {}) {
@@ -158,6 +216,7 @@ async function initialize() {
         logger.warn(`First poll failed for ${mower.name}: ${err.message}`),
       );
     }
+    readZonesOnce(mowers);
   } catch (err) {
     logger.error('Mammotion initialization failed', err);
     await reportDisconnected(err);
@@ -211,6 +270,13 @@ gladys.onSetValue(async (device, feature, value) => {
     throw new Error(`Unknown mower feature ${feature.external_id}`);
   }
   const { mower, key } = target;
+  const settingKey = settingKeyOf(key);
+  if (settingKey) {
+    // Kept for the next job; Gladys saves the value itself (no feedback).
+    setSetting(mower, settingKey, value);
+    logger.info(`${mower.name}: ${settingKey} = ${value} for the next job`);
+    return;
+  }
   const on = Number(value) === 1 ? 1 : 0;
   let command;
   try {
@@ -237,7 +303,7 @@ gladys.onSetValue(async (device, feature, value) => {
     // Zones + route + start take longer than the 5 s Gladys waits for an answer.
     await gladys.publishState(feature.external_id, 1);
     getClient()
-      .startJob(mower, config)
+      .startJob(mower, mowerSettings(mower, config))
       .then(() => scheduleRefresh(mower, REFRESH_AFTER_START_MS))
       .catch(async (err) => {
         logger.warn(`${mower.name}: new job not started: ${err.message}`);
@@ -262,6 +328,16 @@ gladys.onSetValue(async (device, feature, value) => {
   await gladys.publishState(feature.external_id, on);
   scheduleRefresh(mower);
 });
+
+// --- Device created or updated (Discovery screen): fill the setting lists ---
+async function onDeviceSaved(device) {
+  const mower = findMowerByDevice(gladys, device);
+  if (mower) {
+    await publishSettings([mower]);
+  }
+}
+gladys.onDeviceCreated(onDeviceSaved);
+gladys.onDeviceUpdated(onDeviceSaved);
 
 // --- Manifest actions: buttons in the Configuration screen -------------------
 gladys.onAction('test_connection', async () => {
@@ -293,7 +369,14 @@ gladys.onAction('refresh', async () => {
 // --- Configuration updated by the user ---------------------------------------
 gladys.onConfigUpdated(async (newConfig) => {
   logger.info('onConfigUpdated -> new configuration received');
+  const previous = config;
   config = normalizeConfig(newConfig);
+  // A new value saved in the configuration applies to every mower (the
+  // lists are re-published by initialize).
+  const changed = applyConfigChanges(previous, config);
+  if (changed.length > 0) {
+    logger.info(`Settings applied to every mower: ${changed.join(', ')}`);
+  }
   // New credentials or a new poll_frequency: re-login and re-publish the
   // devices (publishDiscoveredDevices is idempotent, upsert by external_id).
   await initialize();
