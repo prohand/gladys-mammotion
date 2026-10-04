@@ -209,7 +209,8 @@ export function buildHashListRequestContent(session, mower, next) {
 /**
  * Ask the mower for one element of its map (PyMammotion synchronize_hash_data).
  * Its first frame, MctlNav.toapp_get_commondata_ack (33), gives its type
- * (0 = zone) and its name; the next frames (the outline) are not asked.
+ * (0 = zone), its name and the start of its outline; the next frames are
+ * asked with buildMapFrameRequestContent.
  * @param {{ userAccount: string }} session
  * @param {{ productKey?: string, deviceName?: string }} mower
  * @param {bigint} hash
@@ -224,21 +225,47 @@ export function buildMapElementRequestContent(session, mower, hash) {
   return navContent(message(bytesField(32, request)), session, mower);
 }
 
+/**
+ * Ask the mower for the next frame of a map element (PyMammotion
+ * get_regional_data): the answer is the frame `currentFrame + 1`.
+ * @param {{ userAccount: string }} session
+ * @param {{ productKey?: string, deviceName?: string }} mower
+ * @param {{ hash: bigint, type: number, action: number, totalFrame: number, currentFrame: number }} frame
+ */
+export function buildMapFrameRequestContent(session, mower, frame) {
+  const request = message(
+    varintField(1, 1), // pver
+    varintField(2, 2), // subCmd 2: next frame
+    varintField(3, frame.action), // action, as in the first frame
+    varintField(4, frame.type), // type, as in the first frame
+    varintField(5, BigInt.asUintN(64, BigInt(frame.hash))), // hash (int64)
+    varintField(8, frame.totalFrame),
+    varintField(9, frame.currentFrame),
+  );
+  return navContent(message(bytesField(32, request)), session, mower);
+}
+
 // Settings of the app -> NavReqCoverPath values (PyMammotion mowing_modes.py).
-const CHANNEL_MODES = { zigzag: 0, chessboard: 1 }; // CuttingMode
+// CuttingMode: 0 single grid (zigzag), 1 double grid (chessboard), 2 segment
+// grid, read as the "adaptive zigzag" of the app (to check: see logRoute).
+const CHANNEL_MODES = { zigzag: 0, chessboard: 1, zigzag_adaptive: 2 };
 const ULTRA_WAVE = { off: 0, slow: 1, less: 2 }; // DetectionStrategy
-// toward_included_angle: angle between the two passes of a chessboard.
+// PathAngleSetting: 0 relative (the mower picks the best angle), 1 absolute
+// (the angle given), 2 random.
+const TOWARD_MODES = { optimal: 0, custom: 1, random: 2 };
+// toward_included_angle: angle between the two passes of a chessboard, only
+// sent for a chessboard (PyMammotion build_route_information).
 const INCLUDED_ANGLE = 90;
 
 /**
  * 8-byte `reserved` string of a route (PyMammotion create_path_order): mowing
- * order (0 border first, 1 zigzag first), laps around the no-go zones, start
- * at 0 %, then the model byte (8 on Luba 2 and later, the "mow only" Yuka job
- * mode on a Yuka) and the grass collection frequency (10).
+ * order (0 border first, 1 zigzag first), laps around the no-go zones, plan
+ * enabled (0), start progress (%), then the model byte (8 on Luba 2 and later,
+ * the "mow only" Yuka job mode on a Yuka) and the grass collection frequency (10).
  */
 function pathOrder(mower, settings) {
   const bytes = [settings.mowing_order === 'border_first' ? 0 : 1, settings.obstacle_laps];
-  bytes.push(0, 0, 0, 0, 0, 0);
+  bytes.push(0, settings.start_progress ?? 0, 0, 0, 0, 0);
   if (receiverFor(mower) === DEV_NAVIGATION) {
     bytes[5] = 8;
     bytes[6] = 10;
@@ -269,7 +296,8 @@ export function buildRouteContent(session, mower, { zones, settings }) {
     floatField(12, settings.mowing_speed), // speed (m/s)
     packedFixed64Field(13, zones), // zoneHashs
     stringField(15, pathOrder(mower, settings)), // reserved
-    varintField(18, INCLUDED_ANGLE), // toward_included_angle (toward_mode 0: relative)
+    varintField(17, TOWARD_MODES[settings.angle_mode] ?? 0), // toward_mode: angle type
+    varintField(18, settings.mowing_pattern === 'chessboard' ? INCLUDED_ANGLE : 0), // toward_included_angle
     varintField(20, 1), // task_settings_mode: advanced
     bytesField(21, Buffer.alloc(32)), // auto_change_direction: off (packed, 32 bytes)
   );

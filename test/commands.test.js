@@ -4,6 +4,7 @@ import { normalizeConfig } from '../src/config.js';
 import {
   buildHashListRequestContent,
   buildMapElementRequestContent,
+  buildMapFrameRequestContent,
   buildReportRequestContent,
   buildRouteContent,
   buildRouteQueryContent,
@@ -17,13 +18,16 @@ import {
   bytesField,
   decodeMessage,
   encodeVarint,
+  floatField,
   message,
+  stringField,
   varintField,
 } from '../src/mammotion/protobuf.js';
 import {
   parseHashList,
   parseMapElement,
   parseRouteAnswer,
+  parseRouteSettings,
   parseZoneList,
 } from '../src/mammotion/report.js';
 
@@ -169,7 +173,8 @@ test('a route covers the given zones with the settings of the configuration', ()
   assert.equal(route[13][0].readBigUInt64LE(8), 2n ** 64n - 1n);
   // zigzag first, 0 lap around the no-go zones, start at 0 %, Luba 2+ bytes
   assert.deepEqual([...route[15][0]], [1, 0, 0, 0, 0, 8, 10, 0]);
-  assert.equal(route[18][0], 90n);
+  assert.equal(route[17][0], 0n); // angle type: optimal
+  assert.equal(route[18][0], 0n); // no included angle off a chessboard
   assert.equal(route[20][0], 1n);
   assert.equal(route[21][0].length, 32);
 });
@@ -197,6 +202,28 @@ test('the route follows the chosen settings', () => {
   assert.equal(route[11][0], 30n);
   assert.ok(Math.abs(route[12][0].readFloatLE(0) - 0.4) < 1e-6);
   assert.deepEqual([...route[15][0]].slice(0, 2), [0, 1]);
+  assert.equal(route[18][0], 90n); // chessboard: passes at 90°
+});
+
+test('the route carries the angle type, the adaptive zigzag and the start progress', () => {
+  const settings = normalizeConfig({
+    angle_mode: 'custom',
+    mowing_angle: 45,
+    mowing_pattern: 'zigzag_adaptive',
+    start_progress: '35',
+  });
+  const route = decodeMessage(
+    navOf(buildRouteContent(session, luba2, { zones: [1n], settings }))[34][0],
+  );
+  assert.equal(route[17][0], 1n); // custom: absolute angle
+  assert.equal(route[11][0], 45n);
+  assert.equal(route[10][0], 2n); // segment grid
+  assert.equal(route[15][0][3], 35); // start at 35 %
+  const random = normalizeConfig({ angle_mode: 'random' });
+  const randomRoute = decodeMessage(
+    navOf(buildRouteContent(session, luba2, { zones: [1n], settings: random }))[34][0],
+  );
+  assert.equal(randomRoute[17][0], 2n);
 });
 
 test('a Yuka route has no blade height (-10, as the app sends)', () => {
@@ -254,8 +281,76 @@ test('nav answers: one map element', () => {
     hash: 2n ** 63n + 1n,
     type: 1,
     name: 'Potager',
+    action: 0,
+    totalFrame: 1,
+    currentFrame: 1,
+    points: [],
   });
   assert.equal(parseMapElement({ 33: [ack] }, 5n), null);
+});
+
+test('nav answers: a frame of a map element outline', () => {
+  const couple = (x, y) => bytesField(13, message(floatField(1, x), floatField(2, y)));
+  const ack = message(
+    varintField(4, 8),
+    varintField(5, 0),
+    Buffer.from([0x31]), // field 6, fixed64
+    Buffer.from([7, 0, 0, 0, 0, 0, 0, 0]),
+    varintField(9, 3),
+    varintField(10, 2),
+    couple(1.5, -2),
+    couple(3, 4.25),
+  );
+  const frame = parseMapElement({ 33: [ack] }, 7n);
+  assert.equal(frame.totalFrame, 3);
+  assert.equal(frame.currentFrame, 2);
+  assert.equal(frame.action, 8);
+  assert.deepEqual(frame.points, [
+    { x: 1.5, y: -2 },
+    { x: 3, y: 4.25 },
+  ]);
+  // Waiting for another frame: not this one.
+  assert.equal(parseMapElement({ 33: [ack] }, 7n, 3), null);
+  assert.ok(parseMapElement({ 33: [ack] }, 7n, 2));
+});
+
+test('the next frame of a map element is asked with its type and action', () => {
+  const request = decodeMessage(
+    navOf(
+      buildMapFrameRequestContent(session, luba2, {
+        hash: 2n ** 64n - 3n,
+        type: 1,
+        action: 8,
+        totalFrame: 4,
+        currentFrame: 2,
+      }),
+    )[32][0],
+  );
+  assert.equal(request[2][0], 2n); // subCmd 2: next frame
+  assert.equal(request[3][0], 8n);
+  assert.equal(request[4][0], 1n);
+  assert.equal(request[5][0], 2n ** 64n - 3n);
+  assert.equal(request[8][0], 4n);
+  assert.equal(request[9][0], 2n);
+});
+
+test('the route settings of the app are read back, echoed reserved bytes included', () => {
+  const nav = {
+    34: [
+      message(
+        varintField(10, 2),
+        varintField(11, 90),
+        stringField(15, String.fromCharCode(11, 10, 10, 30)),
+        varintField(17, 1),
+      ),
+    ],
+  };
+  const route = parseRouteSettings(nav);
+  assert.equal(route.channelMode, 2);
+  assert.equal(route.toward, 90);
+  assert.equal(route.towardMode, 1);
+  assert.deepEqual(route.reserved, [11, 10, 10, 30]);
+  assert.equal(parseRouteSettings({ 33: [Buffer.alloc(0)] }), null);
 });
 
 test('the route query asks for the current route (subCmd 2)', () => {

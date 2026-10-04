@@ -18,6 +18,7 @@ import {
   bytesField,
   decodeMessage,
   encodeVarint,
+  floatField,
   message,
   varintField,
 } from '../src/mammotion/protobuf.js';
@@ -392,13 +393,19 @@ test('signHeaders only lists the non-positional headers', () => {
 });
 
 // A broker mower that answers the nav requests the way a Luba 2 does. Its map:
-// two named zones, one zone without a name and one no-go zone, whose hashes
-// come in two frames.
+// two named zones, one zone without a name (its outline in two frames) and
+// one no-go zone, whose hashes come in two frames.
+const SQUARE = [
+  [0, 0],
+  [10, 0],
+  [10, 10],
+  [0, 10],
+];
 const MAP = [
-  { hash: 11n, type: 0, named: 'Avant' },
-  { hash: 2n ** 63n + 5n, type: 0, named: 'Arrière' },
-  { hash: 21n, type: 0 },
-  { hash: 31n, type: 1 },
+  { hash: 11n, type: 0, named: 'Avant', frames: [SQUARE] },
+  { hash: 2n ** 63n + 5n, type: 0, named: 'Arrière', frames: [SQUARE] },
+  { hash: 21n, type: 0, frames: [SQUARE.slice(0, 2), SQUARE.slice(2)] },
+  { hash: 31n, type: 1, frames: [SQUARE] },
 ];
 
 function startJobFixture({ status = {}, answerZones = true, answerHashes = true } = {}) {
@@ -454,10 +461,28 @@ function startJobFixture({ status = {}, answerZones = true, answerHashes = true 
       );
     }
     if (nav?.[32]) {
-      const hash = decodeMessage(nav[32][0])[5][0];
+      const request = decodeMessage(nav[32][0]);
+      const hash = request[5][0];
+      // subCmd 1: first frame; subCmd 2: the frame after currentFrame.
+      const frame = request[2][0] === 2n ? Number(request[9][0]) + 1 : 1;
       const element = MAP.find((e) => e.hash === hash);
+      const couples = element.frames[frame - 1].map(([x, y]) =>
+        bytesField(13, message(floatField(1, x), floatField(2, y))),
+      );
       setImmediate(() =>
-        answer(bytesField(33, message(varintField(5, element.type), fixed64(6, hash)))),
+        answer(
+          bytesField(
+            33,
+            message(
+              varintField(4, 8),
+              varintField(5, element.type),
+              fixed64(6, hash),
+              varintField(9, element.frames.length),
+              varintField(10, frame),
+              ...couples,
+            ),
+          ),
+        ),
       );
     }
     if (nav?.[34]) {
@@ -500,9 +525,9 @@ const zoneHashes = (route) => {
 test('startJob plans a route over every zone of the map, named or not, then starts', async () => {
   const { client, mower, sent } = startJobFixture({ status: { bladeHeightMm: 50 } });
   await client.startJob(mower, normalizeConfig());
-  // sync, zone names (58), 2 frames of hashes (30), types of the unnamed elements (32),
-  // route (34), start (37)
-  assert.deepEqual(sent, ['type 248', 58, 30, 30, 32, 32, 34, 37]);
+  // sync, zone names (58), 2 frames of hashes (30), the 4 map elements (32) and the
+  // second frame of the outline of zone 21 (32), route (34), start (37)
+  assert.deepEqual(sent, ['type 248', 58, 30, 30, 32, 32, 32, 32, 32, 34, 37]);
   const route = sentRoute();
   assert.equal(route[7][0], 60n); // blade height of the configuration
   assert.deepEqual(zoneHashes(route), [11n, 2n ** 63n + 5n, 21n]);
@@ -520,7 +545,24 @@ test('readZones reads the zones of the map and reports them', async () => {
   await assert.rejects(client.readZones({ ...mower, cloud: 'aliyun' }), /does not list/);
 });
 
-test('startJob reads the type of a map element only once', async () => {
+test('the map keeps the outline of the zones and no-go zones', async () => {
+  const { client, mower } = startJobFixture();
+  assert.equal(client.getMap(mower), null);
+  await client.readZones(mower);
+  const map = client.getMap(mower);
+  assert.deepEqual(
+    map.zones.map((z) => [z.name, z.points.length]),
+    [
+      ['Avant', 4],
+      ['Arrière', 4],
+      ['zone 3', 4],
+    ],
+  );
+  assert.deepEqual(map.zones[2].points[2], { x: 10, y: 10 });
+  assert.equal(map.obstacles.length, 1);
+});
+
+test('startJob reads a map element only once', async () => {
   const { client, mower, sent } = startJobFixture();
   await client.startJob(mower, normalizeConfig());
   sent.length = 0;
@@ -568,6 +610,10 @@ test('startJob does not start without the zones of the map', async () => {
 test('selectZones refuses names that are not on the map', () => {
   const zones = [{ hash: 1n, name: 'Avant' }];
   assert.deepEqual(selectZones(zones, normalizeConfig()), zones);
+  // Zone switch keys and names match whatever the case and the accents.
+  const sud = [{ hash: 2n, name: 'Côté Sud' }, ...zones];
+  assert.deepEqual(selectZones(sud, normalizeConfig({ mowing_zones: 'cote-sud' })), [sud[0]]);
+  assert.deepEqual(selectZones(sud, normalizeConfig({ mowing_zones: 'COTE SUD' })), [sud[0]]);
   assert.throws(() => selectZones(zones, normalizeConfig({ mowing_zones: 'Potager' })), /Avant/);
 });
 

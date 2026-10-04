@@ -28,15 +28,23 @@ import {
 import { buildMowerStates, buildSettingStates, commandFor, mowerIds } from './src/devices/mower.js';
 import {
   applyConfigChanges,
+  getSetting,
   knownZones,
   loadMowerSettings,
   mowerSettings,
   rememberZones,
+  selectedZoneSlugs,
   setSetting,
+  setZone,
   settingFeatureKey,
   settingKeyOf,
+  zoneSlugOf,
+  zonesFromSwitches,
 } from './src/devices/settings.js';
 import { canPlanJobs, isAuthError, MammotionClient } from './src/mammotion/client.js';
+import { modelLimits } from './src/mammotion/models.js';
+import { zoneSlug } from './src/config.js';
+import { renderMap, toCameraImage } from './src/map/render.js';
 
 const gladys = new GladysIntegration();
 
@@ -49,6 +57,8 @@ const REFRESH_AFTER_START_MS = 30_000;
 const INIT_RETRY_MS = 5 * 60_000;
 // Margin for the Gladys scheduler jitter when skipping early polls.
 const POLL_MARGIN_MS = 5_000;
+// Gladys takes at most 12 camera images a minute per device.
+const MAP_IMAGE_INTERVAL_MS = 5_000;
 
 // Current configuration (hot-reloaded via onConfigUpdated).
 let config = normalizeConfig();
@@ -97,34 +107,137 @@ async function refreshMowers() {
 
 // --- Settings of a new job, shown on the device (src/devices/settings.js) ----
 
-/** Value Gladys keeps for a setting list of a created mower, if any. */
+/**
+ * Value Gladys keeps for a setting of a created mower, if any: the zone
+ * switches for the zones (else the zone list of the versions before 1.0.12),
+ * the list of the setting for the others.
+ */
 function storedSetting(mower, key) {
   const ids = mowerIds(gladys, mower);
   const device = (gladys.devices ?? []).find((d) => d.external_id === ids.device);
-  const feature = device?.features?.find(
-    (f) => f.external_id === ids.feature(settingFeatureKey(key)),
-  );
+  const features = device?.features ?? [];
+  if (key === 'mowing_zones') {
+    const prefix = `${ids.device}:`;
+    const zones = zonesFromSwitches(
+      features
+        .filter((f) => f.external_id?.startsWith(prefix))
+        .map((f) => ({ key: f.external_id.slice(prefix.length), value: f.last_value })),
+    );
+    if (zones !== undefined) {
+      return zones;
+    }
+  }
+  const feature = features.find((f) => f.external_id === ids.feature(settingFeatureKey(key)));
   return feature?.last_value_string;
 }
 
-// Show the selected values in the lists. A mower not created in Gladys yet
-// has no feature: its states are refused, nothing to worry about.
+// Show the selected values in the lists and zone switches. A mower not
+// created in Gladys yet, or not updated since a new feature, lacks some
+// features: their states are refused, nothing to worry about. One state per
+// call, so a refused one does not take the others with it.
 async function publishSettings(mowers) {
   for (const mower of mowers) {
-    await gladys
-      .publishStates(buildSettingStates(gladys, mower, config))
-      .catch((err) => logger.debug(`${mower.name}: settings not published: ${err.message}`));
+    for (const state of buildSettingStates(gladys, mower, config)) {
+      await gladys
+        .publishStates([state])
+        .catch((err) =>
+          logger.debug(
+            `${mower.name}: ${state.device_feature_external_id} not published: ${err.message}`,
+          ),
+        );
+    }
   }
 }
 
-// The zones of a map were read: refresh the "Zones to mow" list.
+// The zones of a map were read: refresh the zone switches and the map.
 function onZonesRead(mower, zones) {
   const names = zones.map((z) => z.name);
   if (rememberZones(mower, names)) {
     logger.info(`${mower.name}: zones ${names.join(', ')}`);
     gladys
       .publishDiscoveredDevices(buildDiscoveredDevices(gladys, config))
+      .then(() => publishSettings([mower]))
       .catch((err) => logger.warn(`Zone list not published: ${err.message}`));
+  }
+  publishMap(mower, { force: true }).catch((err) =>
+    logger.warn(`${mower.name}: map not published: ${err.message}`),
+  );
+}
+
+// --- Map image (camera feature of the mower, see src/map/render.js) ---------
+
+// iotId -> { at: ms, key: what the last image showed }
+const lastMapImage = new Map();
+// iotId -> timer of an image put off by MAP_IMAGE_INTERVAL_MS
+const mapTimers = new Map();
+
+/** What the map of a mower shows: zones (those of the next job selected), no-go zones, mower. */
+function mapView(mower) {
+  const map = client?.getMap(mower);
+  const chosen = selectedZoneSlugs(getSetting(mower, 'mowing_zones', config));
+  const zones = (map?.zones ?? []).map((zone) => ({
+    ...zone,
+    selected: chosen.size === 0 || chosen.has(zoneSlug(zone.name)),
+  }));
+  const position = client?.mqtt.getStatus(mower.iotId)?.position ?? null;
+  const key = JSON.stringify([
+    zones.map((z) => [z.name, z.points.length, z.selected]),
+    position && [position.x.toFixed(1), position.y.toFixed(1)],
+  ]);
+  return { zones, obstacles: map?.obstacles ?? [], mower: position, key };
+}
+
+/** Camera image of the map of a mower. */
+function mapImage(view) {
+  return toCameraImage(
+    renderMap({
+      ...view,
+      message: config.language === 'fr' ? 'Carte pas encore lue' : 'Map not read yet',
+    }),
+  );
+}
+
+/**
+ * Push the map image when what it shows changed (mower moved, zones chosen),
+ * at most every MAP_IMAGE_INTERVAL_MS. `force`: the map itself changed.
+ */
+async function publishMap(mower, { force = false } = {}) {
+  if (!client?.getMap(mower)) {
+    return;
+  }
+  const last = lastMapImage.get(mower.iotId);
+  const view = mapView(mower);
+  if (!force && last?.key === view.key) {
+    return;
+  }
+  const wait = (last?.at ?? 0) + MAP_IMAGE_INTERVAL_MS - Date.now();
+  if (wait > 0) {
+    // Too soon for Gladys: draw it a bit later, with what it shows then.
+    if (!mapTimers.has(mower.iotId)) {
+      const timer = setTimeout(() => {
+        mapTimers.delete(mower.iotId);
+        publishMap(mower, { force: true }).catch(() => {});
+      }, wait);
+      timer.unref?.();
+      mapTimers.set(mower.iotId, timer);
+    }
+    return;
+  }
+  lastMapImage.set(mower.iotId, { at: Date.now(), key: view.key });
+  await gladys.publishCameraImage(mowerIds(gladys, mower).device, mapImage(view));
+}
+
+// A blade height above the family range means a high cut ("H") model: its
+// setting lists change (see models.js).
+async function rememberBladeHeight(mower, height) {
+  if (!Number.isFinite(height) || mower.bladeHeightMm === height) {
+    return;
+  }
+  const before = JSON.stringify(modelLimits(mower));
+  mower.bladeHeightMm = height;
+  if (JSON.stringify(modelLimits(mower)) !== before) {
+    logger.info(`${mower.name}: high cut model, blade height lists updated`);
+    await gladys.publishDiscoveredDevices(buildDiscoveredDevices(gladys, config));
   }
 }
 
@@ -147,6 +260,17 @@ async function pollMower(mower, { force = false } = {}) {
   if (states.length > 0) {
     await gladys.publishStates(states);
   }
+  await afterStatus(mower, status);
+}
+
+// Model range and map image follow the state of the mower.
+async function afterStatus(mower, status) {
+  await rememberBladeHeight(mower, status.bladeHeightMm).catch((err) =>
+    logger.warn(`${mower.name}: setting lists not updated: ${err.message}`),
+  );
+  await publishMap(mower).catch((err) =>
+    logger.warn(`${mower.name}: map not published: ${err.message}`),
+  );
 }
 
 // Mowers on the Mammotion broker push their state: publish it, at most once
@@ -179,6 +303,7 @@ async function publishPushedState(iotId) {
   if (states.length > 0) {
     await gladys.publishStates(states);
   }
+  await afterStatus(mower, status);
 }
 
 function scheduleRefresh(mower, delay = REFRESH_AFTER_COMMAND_MS) {
@@ -270,6 +395,14 @@ gladys.onSetValue(async (device, feature, value) => {
     throw new Error(`Unknown mower feature ${feature.external_id}`);
   }
   const { mower, key } = target;
+  const zone = zoneSlugOf(key);
+  if (zone !== null) {
+    // Kept for the next job; Gladys saves the switch position itself.
+    const zones = setZone(mower, zone, Number(value) === 1, config);
+    logger.info(`${mower.name}: zones ${zones} for the next job`);
+    publishMap(mower, { force: true }).catch(() => {});
+    return;
+  }
   const settingKey = settingKeyOf(key);
   if (settingKey) {
     // Kept for the next job; Gladys saves the value itself (no feedback).
@@ -339,6 +472,15 @@ async function onDeviceSaved(device) {
 gladys.onDeviceCreated(onDeviceSaved);
 gladys.onDeviceUpdated(onDeviceSaved);
 
+// --- Map: Gladys asks for a fresh image (dashboard camera widget, chat) ------
+gladys.onGetImage(async (device) => {
+  const mower = findMowerByDevice(gladys, device);
+  if (!mower) {
+    throw new Error(`Unknown mower ${device.external_id}`);
+  }
+  return mapImage(mapView(mower));
+});
+
 // --- Manifest actions: buttons in the Configuration screen -------------------
 gladys.onAction('test_connection', async () => {
   if (!hasCredentials(config)) {
@@ -401,7 +543,7 @@ gladys.handleShutdown((signal) => {
     clearTimeout(timer);
   }
   refreshTimers.clear();
-  for (const timer of pushTimers.values()) {
+  for (const timer of [...pushTimers.values(), ...mapTimers.values()]) {
     clearTimeout(timer);
   }
   client?.stop();

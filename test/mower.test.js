@@ -12,6 +12,7 @@ import {
 } from '../src/devices/index.js';
 import { WORK_MODES } from '../src/mammotion/telemetry.js';
 import { normalizeConfig } from '../src/config.js';
+import { rememberZones } from '../src/devices/settings.js';
 import { createFakeGladys } from './helpers/fakeGladys.js';
 
 const gladys = createFakeGladys();
@@ -37,7 +38,8 @@ test('the mower device uses a poll_frequency accepted by Gladys (ms)', () => {
   assert.equal(device.external_id, 'mower:iot-luba-1');
 });
 
-test('only the switches, the refresh button and the setting lists are controllable', () => {
+test('only the switches, the refresh button and the settings are controllable', () => {
+  rememberZones(luba, ['Devant', 'Côté Sud']);
   const device = buildMowerDevice(gladys, luba, config);
   const writable = device.features
     .filter((f) => !f.read_only && f.type !== DEVICE_FEATURE_TYPES.TEXT.SELECT)
@@ -46,7 +48,13 @@ test('only the switches, the refresh button and the setting lists are controllab
     'mower:iot-luba-1:dock',
     'mower:iot-luba-1:mowing',
     'mower:iot-luba-1:refresh',
+    'mower:iot-luba-1:zone-cote-sud',
+    'mower:iot-luba-1:zone-devant',
   ]);
+  assert.equal(feature(device, 'zone-cote-sud').name, 'Zone à tondre – Côté Sud');
+  // The map is a camera image of the mower device.
+  assert.equal(feature(device, FEATURE.MAP).category, DEVICE_FEATURE_CATEGORIES.CAMERA);
+  assert.equal(feature(device, FEATURE.MAP).type, DEVICE_FEATURE_TYPES.CAMERA.IMAGE);
   for (const key of [FEATURE.MOWING, FEATURE.DOCK]) {
     assert.equal(feature(device, key).category, DEVICE_FEATURE_CATEGORIES.SWITCH);
     assert.equal(feature(device, key).type, DEVICE_FEATURE_TYPES.SWITCH.BINARY);
@@ -140,6 +148,8 @@ test('a report shows the job progress, remaining time and charge state', () => {
       charging: false,
       progressPercent: 45,
       remainingMinutes: 38,
+      totalMinutes: 120,
+      jobAreaM2: 300,
     },
     config,
   );
@@ -148,6 +158,9 @@ test('a report shows the job progress, remaining time and charge state', () => {
   );
   assert.equal(byKey.status, 'En tonte (45 %)');
   assert.equal(byKey['remaining-time'], 38);
+  assert.equal(byKey.progress, 45);
+  assert.equal(byKey['elapsed-time'], 82);
+  assert.equal(byKey['job-area'], 300);
   assert.equal(byKey['charging-state'], 0);
 
   // Full on the dock: the work mode says READY, charge_state says docked.
@@ -165,12 +178,24 @@ test('a report shows the job progress, remaining time and charge state', () => {
   const ready = buildMowerStates(
     gladys,
     luba,
-    { workMode: WORK_MODES.READY, online: true, remainingMinutes: 382 },
+    {
+      workMode: WORK_MODES.READY,
+      online: true,
+      remainingMinutes: 382,
+      progressPercent: 100,
+      totalMinutes: 400,
+      jobAreaM2: 300,
+    },
     config,
   );
-  assert.ok(
-    ready.some((s) => s.device_feature_external_id.endsWith(':remaining-time') && s.state === 0),
+  const readyKey = Object.fromEntries(
+    ready.map((s) => [s.device_feature_external_id.split(':').pop(), s.state]),
   );
+  assert.equal(readyKey['remaining-time'], 0);
+  assert.equal(readyKey.progress, 0);
+  assert.equal(readyKey['elapsed-time'], 0);
+  // The area of the last job stays.
+  assert.equal(readyKey['job-area'], 300);
 });
 
 test('an offline mower shows "Hors ligne" and unknown values are skipped', () => {

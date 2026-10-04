@@ -16,23 +16,37 @@ Chaque tondeuse de votre compte Mammotion apparaît avec :
 - **Rafraîchir** (bouton) : demande tout de suite son état à la tondeuse ;
 - **État** : En tonte (45 %), En charge, En pause, Retour à la base, Hors ligne… ;
 - **Batterie** (%) et **En charge** ;
-- **Hauteur de coupe** (mm), **Temps de tonte restant** (min) ;
+- **Hauteur de coupe** (mm) ;
+- pendant une tonte : **Avancement de la tonte** (%), **Temps de tonte
+  écoulé** et **restant** (min), **Surface à tondre** (m²) ;
 - **Temps de tonte total** (h), **Distance totale** (km) ;
-- les **réglages de la prochaine tonte**, en listes « Réglage – … » : zones,
-  hauteur de coupe, vitesse, espacement, angle, mode de trajectoire, tours de
-  périmètre, détection d'obstacle, tours des zones interdites, ordre.
+- **Carte** (image, widget **Caméra** du tableau de bord) : les zones (vert
+  vif = zones de la prochaine tonte, vert pâle = les autres) avec leur nom,
+  les zones interdites (gris) et la tondeuse (point rouge) ;
+- les **zones de la prochaine tonte** : un interrupteur « Zone à tondre – … »
+  par zone de la carte. Plusieurs zones peuvent être allumées ; aucune
+  allumée = toutes les zones ;
+- les **autres réglages de la prochaine tonte**, en listes « Réglage – … » :
+  hauteur de coupe, vitesse, espacement, type d'angle (optimal, personnaliser,
+  aléatoire), angle personnalisé (0 à 180°), mode de trajectoire (zigzag,
+  damier, zigzag adaptatif), tours de périmètre, détection d'obstacle, tours
+  des zones interdites (0 à 3), ordre, progression du démarrage (0 à 99 %).
+  Les listes suivent les plages du modèle : par exemple sur une Luba 2 X,
+  hauteur de 25 à 70 mm par pas de 5, vitesse de 0,2 à 0,8 m/s, espacement de
+  20 à 32 cm.
 
 > **Réglages sur l'appareil** (comme l'intégration Dreame) : choisissez les
-> valeurs dans les listes de la tondeuse (tableau de bord ou scène), puis
-> allumez **Tonte** : la tonte part avec ces réglages.
+> zones et les valeurs dans les listes de la tondeuse (tableau de bord ou
+> scène), puis allumez **Tonte** : la tonte part avec ces réglages.
 >
 > - Au départ, les listes reprennent la section « Nouvelle tonte » de la
 >   configuration.
 > - Un choix dans une liste vaut pour cette tondeuse seulement.
 > - Enregistrer une **nouvelle** valeur dans la configuration l'applique à
 >   toutes les tondeuses.
-> - La liste des zones se remplit avec les zones de la carte, lues au
->   démarrage de l'intégration (« Toutes les zones » en premier).
+> - Les interrupteurs de zones apparaissent quand la carte est lue (au
+>   démarrage de l'intégration, tondeuse allumée), après **Mettre à jour**
+>   dans l'onglet **Découverte**.
 
 > **Lancer une tonte** depuis Gladys (tondeuse « Prête », sur sa base ou non),
 > comme le fait Home Assistant :
@@ -40,7 +54,7 @@ Chaque tondeuse de votre compte Mammotion apparaît avec :
 > - si une tonte s'est arrêtée en cours (batterie, pluie…), elle reprend là où
 >   elle en était ;
 > - sinon, Gladys prépare un trajet sur **toutes les zones** de la carte (même
->   celles sans nom), ou sur celles choisies dans « Zones à tondre », avec les
+>   celles sans nom), ou sur celles allumées dans « Zone à tondre – … », avec les
 >   réglages de la section « Nouvelle tonte » de la configuration (hauteur,
 >   vitesse, espacement, angle, mode de trajectoire, tours de périmètre,
 >   détection d'obstacle…), puis lance la tonte.
@@ -79,8 +93,9 @@ une scène, sans fausse alerte.
 ## Exemples de scènes
 
 - Lancer une tonte chaque samedi à 10 h s'il ne pleut pas.
-- Le samedi, régler « Réglage – Zones à tondre » sur « Devant » puis allumer
-  « Tonte » ; le mercredi, choisir « Toutes les zones ».
+- Le samedi, allumer « Zone à tondre – Devant » et « Zone à tondre – Côté »,
+  éteindre les autres, puis allumer « Tonte » ; le mercredi, tout éteindre
+  (toutes les zones) puis allumer « Tonte ».
 - Reprendre la tonte en pause quand la pluie s'arrête.
 - Renvoyer la tondeuse à la base quand le capteur de pluie détecte de la pluie.
 - Recevoir un message quand l'état passe à « Erreur de position ».
@@ -89,9 +104,18 @@ une scène, sans fausse alerte.
 
 - **Pas de listes « Réglage – … » sur la tondeuse** : onglet **Découverte**,
   bouton **Mettre à jour** sur la tondeuse.
-- **La liste des zones ne montre que « Toutes les zones »** : la tondeuse
-  n'a pas encore envoyé sa carte (éteinte, hors réseau). Elle est relue au
-  prochain démarrage de l'intégration et à chaque tonte lancée par Gladys.
+- **Pas d'interrupteur « Zone à tondre – … », ou la carte affiche « Carte pas
+  encore lue »** : la tondeuse n'a pas encore envoyé sa carte (éteinte, hors
+  réseau). Elle est relue au prochain démarrage de l'intégration et à chaque
+  tonte lancée par Gladys. Puis **Mettre à jour** dans l'onglet
+  **Découverte**.
+- **Afficher la carte** : sur le tableau de bord, ajoutez un widget
+  **Caméra** et choisissez la tondeuse. L'image suit la tondeuse pendant la
+  tonte (au plus toutes les 15 s).
+- **Vérifier un réglage de l'application** : lancez une tonte depuis
+  l'application Mammotion, puis cherchez « route settings seen » dans les
+  logs de l'intégration. La ligne montre ce que l'application a envoyé
+  (`towardMode` = type d'angle, `channelMode` = mode de trajectoire…).
 
 - **« Cloud Mammotion injoignable »** : vérifiez l'email et le mot de passe,
   puis cliquez sur **Tester la connexion**.
