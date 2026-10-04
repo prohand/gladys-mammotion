@@ -9,31 +9,32 @@ et le SDK [`@gladysassistant/integration-sdk`](https://github.com/GladysAssistan
 
 Chaque tondeuse du compte Mammotion devient un appareil Gladys avec :
 
-| Fonctionnalité    | Type Gladys             | Rôle                                                       |
-| ----------------- | ----------------------- | ---------------------------------------------------------- |
-| Tonte             | interrupteur (commande) | `1` = lancer une tonte ou reprendre, `0` = pause           |
-| Retour à la base  | interrupteur (commande) | `1` = retour à la base, `0` = annuler le retour (¹)        |
-| Rafraîchir        | bouton poussoir         | demande son état à la tondeuse                             |
-| État              | texte                   | « En tonte », « En charge », « En pause », « Hors ligne »… |
-| Batterie          | batterie (%)            | niveau de charge                                           |
-| En charge         | entrée binaire          | `1` quand la tondeuse charge sur sa base                   |
-| Hauteur de coupe  | distance (mm)           | hauteur des lames                                          |
-| Avancement        | capteur (%)             | avancement de la tonte en cours                            |
-| Temps écoulé      | durée (min)             | temps écoulé de la tonte en cours                          |
-| Temps restant     | durée (min)             | temps restant de la tonte en cours                         |
-| Surface à tondre  | surface (m²)            | surface de la tonte (en cours ou dernière)                 |
-| Temps de tonte    | durée (h)               | compteur total                                             |
-| Distance totale   | distance (km)           | compteur total                                             |
-| Carte             | caméra (image)          | zones, zones interdites, position de la tondeuse (³)       |
-| Zone à tondre – … | interrupteur            | zones de la prochaine tonte (aucune allumée = toutes)      |
-| Réglage – …       | liste (`text`/`select`) | réglages de la prochaine tonte (²)                         |
+| Fonctionnalité    | Type Gladys                 | Rôle                                                                     |
+| ----------------- | --------------------------- | ------------------------------------------------------------------------ |
+| Tonte             | interrupteur (commande)     | `1` = lancer une tonte ou reprendre, `0` = pause                         |
+| Retour à la base  | interrupteur (commande)     | `1` = retour à la base, `0` = annuler le retour (¹)                      |
+| Rafraîchir        | bouton poussoir             | demande son état à la tondeuse                                           |
+| État              | texte                       | « En tonte », « En charge », « En pause », « Hors ligne »…               |
+| Batterie          | batterie (%)                | niveau de charge                                                         |
+| En charge         | entrée binaire              | `1` quand la tondeuse charge sur sa base                                 |
+| Hauteur de coupe  | distance (mm)               | hauteur des lames                                                        |
+| Avancement        | capteur (%)                 | avancement de la tonte en cours                                          |
+| Temps écoulé      | durée (min)                 | temps écoulé de la tonte en cours                                        |
+| Temps restant     | durée (min)                 | temps restant de la tonte en cours                                       |
+| Surface à tondre  | surface (m²)                | surface de la tonte (en cours ou dernière)                               |
+| Temps de tonte    | durée (h)                   | compteur total                                                           |
+| Distance totale   | distance (km)               | compteur total                                                           |
+| Carte             | caméra (image)              | zones, zones interdites, position de la tondeuse (³)                     |
+| Zone à tondre – … | interrupteur                | zones de la prochaine tonte (aucune allumée = toutes)                    |
+| Réglage – …       | liste (`text`/`select`)     | réglages de la prochaine tonte (²)                                       |
+| Réglage – Angle…  | curseur (`switch`/`dimmer`) | angle personnalisé (0 à 180°) et progression du démarrage (0 à 99 %) (⁴) |
 
 (²) Hauteur, vitesse, espacement, type d'angle, angle (0 à 180°), mode
 (zigzag, damier, zigzag adaptatif), tours de périmètre, détection d'obstacle,
 tours des zones interdites (0 à 3), ordre, progression du démarrage (0 à 99 %)
 (`src/devices/settings.js`). Les plages suivent le modèle, lu dans le nom
 technique de la tondeuse (`src/mammotion/models.js`, tables de PyMammotion ;
-Luba 2 X : 25 à 70 mm, 0,2 à 0,8 m/s, 20 à 32 cm). Les listes partent de la
+Luba 2 X : 25 à 70 mm, 0,2 à 0,8 m/s, 20 à 35 cm). Les listes partent de la
 section « Nouvelle tonte » de la configuration ; un choix sur l'appareil vaut
 pour cette tondeuse (Gladys garde la valeur dans `last_value_string`, ou
 `last_value` pour les interrupteurs de zones, relue au démarrage) ; une
@@ -41,6 +42,11 @@ nouvelle valeur enregistrée dans la configuration s'applique à toutes. Les
 zones de la carte sont lues une fois au démarrage (`readZones`) puis à chaque
 tonte ; un interrupteur par zone (`zone-<nom sans accent>`) est publié. Libellés
 pris dans le `config_schema`.
+
+(⁴) Curseurs et non listes : 181 + 100 choix rendaient l'appareil trop gros
+pour Gladys (la page de l'appareil renvoie tout, choix et image de la carte
+compris, et Gladys refuse au-delà de 100 ko). L'angle est envoyé comme l'appli
+l'attend (`toward` = 180 − angle de l'appli).
 
 (³) Contour des zones (`NavGetCommData`, trame par trame, gardé en mémoire par
 hash) et position de la tondeuse (`report_info_data.locations`, en 1/10000 m,

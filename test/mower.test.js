@@ -48,6 +48,8 @@ test('only the switches, the refresh button and the settings are controllable', 
     'mower:iot-luba-1:dock',
     'mower:iot-luba-1:mowing',
     'mower:iot-luba-1:refresh',
+    'mower:iot-luba-1:setting-mowing-angle',
+    'mower:iot-luba-1:setting-start-progress',
     'mower:iot-luba-1:zone-cote-sud',
     'mower:iot-luba-1:zone-devant',
   ]);

@@ -5,6 +5,11 @@
 // feature of every mower, usable on the dashboard and in scenes:
 //   - the zones: one switch per zone of the map ("Zone to mow – Front"), so
 //     several zones can be picked; no switch ON means every zone;
+//   - the custom angle (0 to 180°) and the start progress (0 to 99 %): a
+//     slider (`switch`/`dimmer`, min / max / step 1). As lists, their 280
+//     options made the device too big for Gladys: saving it from the device
+//     page failed (the page posts the whole device, options and map image
+//     included, and Gladys takes 100 KB at most);
 //   - the others: a `text`/`select` drop-down list, whose values follow the
 //     range of the mower model (see mammotion/models.js).
 // A new job started from Gladys uses the settings of ITS mower
@@ -51,6 +56,14 @@ export const SETTING_KEYS = [
 
 // Settings shown as a drop-down list, in display order (the zones are switches).
 export const LIST_KEYS = SETTING_KEYS.filter((key) => key !== 'mowing_zones');
+
+// Settings shown as a slider (a number), not as a list: too many values.
+export const SLIDER_KEYS = ['mowing_angle', 'start_progress'];
+
+/** True for a setting shown as a slider. */
+export function isSlider(key) {
+  return SLIDER_KEYS.includes(key);
+}
 
 // Value of the "every zone" choice.
 export const ALL_ZONES = '*';
@@ -113,9 +126,24 @@ export function settingRange(mower, key) {
   return key in limits ? limits[key] : MOWING_BOUNDS[key];
 }
 
-/** List settings shown on this mower (a Yuka has no blade height). */
-export function listKeysFor(mower) {
+/** Settings shown on this mower, lists and sliders (a Yuka has no blade height). */
+function settingKeysFor(mower) {
   return LIST_KEYS.filter((key) => !(key in NUMBER_STEPS) || settingRange(mower, key));
+}
+
+/** Drop-down list settings shown on this mower. */
+export function listKeysFor(mower) {
+  return settingKeysFor(mower).filter((key) => !isSlider(key));
+}
+
+/** Slider settings shown on this mower. */
+export function sliderKeysFor(mower) {
+  return settingKeysFor(mower).filter(isSlider);
+}
+
+/** Step of a numeric setting. */
+export function settingStep(key) {
+  return NUMBER_STEPS[key];
 }
 
 function numberLabel(key, value, language) {
@@ -276,6 +304,10 @@ function isValidValue(mower, key, value) {
   if (key in NUMBER_STEPS) {
     const [min, max] = settingRange(mower, key) ?? MOWING_BOUNDS[key];
     const number = Number(value);
+    // A slider moves by whole steps (1° / 1 %).
+    if (isSlider(key) && !Number.isInteger(number)) {
+      return false;
+    }
     return Number.isFinite(number) && number >= min && number <= max;
   }
   return FIELDS.get(key).options.some((option) => option.value === value);

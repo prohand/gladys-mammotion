@@ -24,13 +24,15 @@ Each mower of your Mammotion account shows up with:
   the no-go zones (grey) and the mower (red dot);
 - the **zones of the next job**: one "Zone to mow – …" switch per zone of
   the map. Several zones can be on; none on = every zone;
-- the **other settings of the next job**, as "Setting – …" lists: blade
-  height, speed, spacing, angle type (optimal, custom, random), custom angle
-  (0 to 180°), pattern (zigzag, chessboard, adaptive zigzag), perimeter laps,
-  obstacle detection, no-go zone laps (0 to 3), order, start progress (0 to
-  99 %). The lists follow the ranges of the model: on a Luba 2 X for
-  instance, height from 25 to 70 mm by steps of 5, speed from 0.2 to 0.8 m/s,
-  spacing from 20 to 32 cm.
+- the **other settings of the next job**, "Setting – …": lists for the blade
+  height, speed, spacing, angle type (optimal, custom, random), pattern
+  (zigzag, chessboard, adaptive zigzag), perimeter laps, obstacle detection,
+  no-go zone laps (0 to 3) and order; sliders for the custom angle (0 to
+  180°, as in the app) and the start progress (0 to 99 %). The lists follow
+  the ranges of the model: on a Luba 2 X for instance, height from 25 to
+  70 mm by steps of 5, speed from 0.2 to 0.8 m/s, spacing from 20 to 35 cm.
+- **zones without a name** in the app are named as in the app ("Zone 1",
+  "Zone 4"…).
 
 > **Settings on the device** (like the Dreame integration): pick the zones
 > and the values in the lists of the mower (dashboard or scene), then turn

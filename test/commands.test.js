@@ -167,7 +167,7 @@ test('a route covers the given zones with the settings of the configuration', ()
   assert.equal(route[8][0], 32n); // 32 cm between passes
   assert.equal(route[9][0], 0n); // obstacle detection off
   assert.equal(route[10][0], 0n); // zigzag
-  assert.equal(route[11][0], 111n); // angle
+  assert.equal(route[11][0], 69n); // angle 111° of the app, counted the other way
   assert.ok(Math.abs(route[12][0].readFloatLE(0) - 0.6) < 1e-6); // speed
   assert.equal(route[13][0].readBigUInt64LE(0), 11n);
   assert.equal(route[13][0].readBigUInt64LE(8), 2n ** 64n - 1n);
@@ -199,7 +199,7 @@ test('the route follows the chosen settings', () => {
   assert.equal(route[8][0], 25n);
   assert.equal(route[9][0], 2n);
   assert.equal(route[10][0], 1n);
-  assert.equal(route[11][0], 30n);
+  assert.equal(route[11][0], 150n); // 30° of the app
   assert.ok(Math.abs(route[12][0].readFloatLE(0) - 0.4) < 1e-6);
   assert.deepEqual([...route[15][0]].slice(0, 2), [0, 1]);
   assert.equal(route[18][0], 90n); // chessboard: passes at 90°
@@ -216,7 +216,7 @@ test('the route carries the angle type, the adaptive zigzag and the start progre
     navOf(buildRouteContent(session, luba2, { zones: [1n], settings }))[34][0],
   );
   assert.equal(route[17][0], 1n); // custom: absolute angle
-  assert.equal(route[11][0], 45n);
+  assert.equal(route[11][0], 135n); // 45° of the app
   assert.equal(route[10][0], 2n); // segment grid
   assert.equal(route[15][0][3], 35); // start at 35 %
   const random = normalizeConfig({ angle_mode: 'random' });

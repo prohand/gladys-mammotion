@@ -5,7 +5,7 @@
 // 70 mm, a Luba mini from 20 to 65 mm, a Yuka has no height to set… The
 // ranges come from the PyMammotion capability tables
 // (data/model/device_capabilities.py) and from the app itself (Luba 2 X:
-// 0.2 to 0.8 m/s, 20 to 32 cm). Those tables are keyed by an internal model
+// 0.2 to 0.8 m/s, 20 to 35 cm). Those tables are keyed by an internal model
 // code the cloud does not give: the family is read from the technical name
 // of the mower ("Luba-VS…", "Yuka-MN…"), the most common variant of the
 // family wins. The "H" variants (high cut, 55 to 100 mm) cannot be told
@@ -18,9 +18,9 @@ import { MOWING_BOUNDS } from '../config.js';
 // Families by technical name prefix, most specific first.
 const FAMILIES = [
   {
-    // Luba 2 X / Luba 2 AWD X (Luba-VP…): the app goes up to 0.8 m/s and 32 cm.
+    // Luba 2 X / Luba 2 AWD X (Luba-VP…): the app goes up to 0.8 m/s and 35 cm.
     name: /^luba-vp/i,
-    limits: { blade_height: [25, 70], mowing_speed: [0.2, 0.8], line_spacing: [20, 32] },
+    limits: { blade_height: [25, 70], mowing_speed: [0.2, 0.8], line_spacing: [20, 35] },
   },
   {
     // Luba 2 (Luba-VS…, Luba-VA…).
