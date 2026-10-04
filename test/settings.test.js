@@ -6,31 +6,39 @@ import {
   ALL_ZONES,
   applyConfigChanges,
   getSetting,
+  LIST_KEYS,
+  listKeysFor,
   loadMowerSettings,
   mowerSettings,
   rememberZones,
   resetSettings,
   setSetting,
-  SETTING_KEYS,
+  setZone,
   settingFeatureKey,
   settingKeyOf,
   settingOptions,
+  zoneSlugOf,
+  zonesFromSwitches,
 } from '../src/devices/settings.js';
+import { modelLimits } from '../src/mammotion/models.js';
 import { DEFAULT_CONFIG, normalizeConfig } from '../src/config.js';
 import { createFakeGladys } from './helpers/fakeGladys.js';
 
 const gladys = createFakeGladys();
 const luba = { iotId: 'iot-luba-1', name: 'Luba 2' };
 const yuka = { iotId: 'iot-yuka-1', name: 'Yuka' };
+// Chris75's mower on the forum: a Luba 2 AWD X.
+const luba2x = { iotId: 'iot-luba-2x', name: 'Luba 2 X', deviceName: 'Luba-VPMBS8RA' };
 const config = normalizeConfig();
 
 beforeEach(() => resetSettings());
 
 const option = (key, value) => settingOptions(key, { language: 'fr', current: value });
 
-test('every mowing setting of the configuration is a select list of the device', () => {
+test('every mowing setting but the zones is a select list of the device', () => {
   const device = buildMowerDevice(gladys, luba, config);
-  for (const key of SETTING_KEYS) {
+  assert.ok(!device.features.some((f) => f.external_id.endsWith(':setting-mowing-zones')));
+  for (const key of LIST_KEYS) {
     const feature = device.features.find((f) =>
       f.external_id.endsWith(`:${settingFeatureKey(key)}`),
     );
@@ -38,8 +46,7 @@ test('every mowing setting of the configuration is a select list of the device',
     assert.equal(feature.category, DEVICE_FEATURE_CATEGORIES.TEXT);
     assert.equal(feature.type, DEVICE_FEATURE_TYPES.TEXT.SELECT);
     assert.equal(feature.read_only, false);
-    // The zone list only holds "every zone" until the map is read.
-    assert.ok(feature.supported_options.length >= (key === 'mowing_zones' ? 1 : 2), key);
+    assert.ok(feature.supported_options.length >= 2, key);
     // Gladys refuses empty or duplicate values.
     const values = feature.supported_options.map((o) => o.value);
     assert.equal(new Set(values).size, values.length, key);
@@ -51,6 +58,7 @@ test('every mowing setting of the configuration is a select list of the device',
     assert.ok(values.includes(getSetting(luba, key, config)), key);
   }
   assert.equal(settingKeyOf('setting-blade-height'), 'blade_height');
+  assert.equal(settingKeyOf('setting-mowing-zones'), null);
   assert.equal(settingKeyOf('mowing'), null);
 });
 
@@ -87,21 +95,91 @@ test('numeric lists cover the bounds, with exact steps, and keep a value typed i
   assert.ok(heights.indexOf('62') > heights.indexOf('60'));
 });
 
-test('the zone list offers every zone, then each zone of the map', () => {
-  rememberZones(luba, ['Derrière', 'Bas']);
-  const options = settingOptions('mowing_zones', {
-    language: 'fr',
-    current: ALL_ZONES,
-    zones: ['Derrière', 'Bas'],
-  });
-  assert.deepEqual(options, [
-    { value: '*', label: 'Toutes les zones' },
-    { value: 'Derrière', label: 'Derrière' },
-    { value: 'Bas', label: 'Bas' },
-  ]);
-  // Zones typed in the configuration stay selectable.
-  const typed = settingOptions('mowing_zones', { language: 'fr', current: 'Bas, Devant' });
-  assert.equal(typed.at(-1).value, 'Bas, Devant');
+test('the lists follow the range of the mower model (Luba 2 X)', () => {
+  const values = (key) =>
+    settingOptions(key, { language: 'fr', mower: luba2x }).map((o) => Number(o.value));
+  const heights = values('blade_height');
+  assert.equal(heights[0], 25);
+  assert.equal(heights.at(-1), 70);
+  assert.ok(heights.every((h) => h % 5 === 0));
+  assert.deepEqual(values('mowing_speed'), [0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8]);
+  const spacings = values('line_spacing');
+  assert.equal(spacings[0], 20);
+  assert.equal(spacings.at(-1), 32);
+  assert.equal(spacings.length, 13);
+  assert.deepEqual(values('obstacle_laps'), [0, 1, 2, 3]);
+  const angles = values('mowing_angle');
+  assert.equal(angles.length, 181);
+  assert.equal(angles.at(-1), 180);
+  const progress = values('start_progress');
+  assert.equal(progress.length, 100);
+  assert.equal(progress.at(-1), 99);
+  assert.deepEqual(
+    settingOptions('mowing_pattern', { language: 'fr' }).map((o) => o.label),
+    ['Trajectoire en zigzag', 'Damier', 'Zigzag adaptatif'],
+  );
+  assert.deepEqual(
+    settingOptions('angle_mode', { language: 'fr' }).map((o) => o.label),
+    ['Optimal', 'Personnaliser', 'Aléatoire'],
+  );
+});
+
+test('a value out of the model range is brought within it, for the list and the job', () => {
+  loadMowerSettings(luba2x, normalizeConfig({ mowing_speed: '1.2', blade_height: 15 }), () => {});
+  const conf = normalizeConfig({ mowing_speed: '1.2', blade_height: 15 });
+  assert.equal(getSetting(luba2x, 'mowing_speed', conf), '0.8');
+  assert.equal(getSetting(luba2x, 'blade_height', conf), '25');
+  const settings = mowerSettings(luba2x, conf);
+  assert.equal(settings.mowing_speed, 0.8);
+  assert.equal(settings.blade_height, 25);
+  assert.throws(() => setSetting(luba2x, 'mowing_speed', '1.0'), /Invalid/);
+});
+
+test('model ranges: families, Yuka without height, high cut models', () => {
+  assert.deepEqual(modelLimits({ deviceName: 'Luba-VSABCDEF' }).mowing_speed, [0.2, 1.2]);
+  assert.deepEqual(modelLimits({ deviceName: 'Luba-MNABCDEF' }).blade_height, [20, 65]);
+  assert.equal(modelLimits({ deviceName: 'Yuka-ABCDEF' }).blade_height, null);
+  assert.ok(!listKeysFor({ iotId: 'y', deviceName: 'Yuka-ABCDEF' }).includes('blade_height'));
+  assert.ok(listKeysFor(luba2x).includes('blade_height'));
+  // A Luba 2 reporting 85 mm is a high cut ("H") model.
+  assert.deepEqual(
+    modelLimits({ deviceName: 'Luba-VPMBS8RA', bladeHeightMm: 85 }).blade_height,
+    [55, 100],
+  );
+  // Unknown name: the bounds of the configuration.
+  assert.deepEqual(modelLimits({}).blade_height, [15, 100]);
+});
+
+test('the zone switches pick the zones of the next job; none means every zone', () => {
+  loadMowerSettings(luba, config, () => undefined);
+  rememberZones(luba, ['Devant', 'Côté Sud', 'Bas']);
+  assert.equal(setZone(luba, 'cote-sud', true, config), 'cote-sud');
+  assert.equal(setZone(luba, 'devant', true, config), 'cote-sud,devant');
+  assert.equal(mowerSettings(luba, config).mowing_zones, 'cote-sud,devant');
+  const states = Object.fromEntries(
+    buildSettingStates(gladys, luba, config)
+      .filter((s) => s.state !== undefined)
+      .map((s) => [s.device_feature_external_id.split(':').pop(), s.state]),
+  );
+  assert.deepEqual(states, { 'zone-devant': 1, 'zone-cote-sud': 1, 'zone-bas': 0 });
+  setZone(luba, 'cote-sud', false, config);
+  assert.equal(setZone(luba, 'devant', false, config), ALL_ZONES);
+  assert.equal(mowerSettings(luba, config).mowing_zones, '');
+  assert.equal(zoneSlugOf('zone-cote-sud'), 'cote-sud');
+  assert.equal(zoneSlugOf('setting-blade-height'), null);
+});
+
+test('the zones are read back from the switches Gladys keeps', () => {
+  assert.equal(zonesFromSwitches([{ key: 'mowing', value: 1 }]), undefined);
+  assert.equal(
+    zonesFromSwitches([
+      { key: 'zone-devant', value: 1 },
+      { key: 'zone-bas', value: 0 },
+      { key: 'zone-cote-sud', value: 1 },
+    ]),
+    'devant,cote-sud',
+  );
+  assert.equal(zonesFromSwitches([{ key: 'zone-bas', value: 0 }]), ALL_ZONES);
 });
 
 test('a value picked on the device is used by the next job of that mower only', () => {
@@ -153,10 +231,10 @@ test('a new value saved in the configuration applies to every mower', () => {
 test('the setting states carry the selected value as text', () => {
   loadMowerSettings(luba, config, () => undefined);
   const states = buildSettingStates(gladys, luba, config);
-  assert.equal(states.length, SETTING_KEYS.length);
+  assert.equal(states.length, LIST_KEYS.length);
   assert.deepEqual(
-    states.find((s) => s.device_feature_external_id.endsWith(':setting-mowing-zones')),
-    { device_feature_external_id: 'mower:iot-luba-1:setting-mowing-zones', text: '*' },
+    states.find((s) => s.device_feature_external_id.endsWith(':setting-angle-mode')),
+    { device_feature_external_id: 'mower:iot-luba-1:setting-angle-mode', text: 'optimal' },
   );
 });
 

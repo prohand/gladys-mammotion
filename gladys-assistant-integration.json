@@ -103,8 +103,8 @@
         "fr": "Nouvelle tonte"
       },
       "description": {
-        "en": "Settings of a new job started from Gladys (Mowing switch ON, mower docked or ready). Each mower also shows them as \"Setting – …\" lists, to change them for that mower only, from the dashboard or a scene. Saving a new value here applies it to every mower. The Mammotion app keeps its own settings on the phone: Gladys cannot read them.",
-        "fr": "Réglages d'une nouvelle tonte lancée par Gladys (interrupteur Tonte sur ON, tondeuse à la base ou prête). Chaque tondeuse les affiche aussi en listes « Réglage – … », pour les changer pour elle seule, depuis le tableau de bord ou une scène. Enregistrer ici une nouvelle valeur l'applique à toutes les tondeuses. L'application Mammotion garde ses réglages dans le téléphone : Gladys ne peut pas les lire."
+        "en": "Settings of a new job started from Gladys (Mowing switch ON, mower docked or ready). Each mower also shows them as \"Zone to mow – …\" switches and \"Setting – …\" lists, to change them for that mower only, from the dashboard or a scene. Saving a new value here applies it to every mower. The Mammotion app keeps its own settings on the phone: Gladys cannot read them.",
+        "fr": "Réglages d'une nouvelle tonte lancée par Gladys (interrupteur Tonte sur ON, tondeuse à la base ou prête). Chaque tondeuse les affiche aussi en interrupteurs « Zone à tondre – … » et en listes « Réglage – … », pour les changer pour elle seule, depuis le tableau de bord ou une scène. Enregistrer ici une nouvelle valeur l'applique à toutes les tondeuses. L'application Mammotion garde ses réglages dans le téléphone : Gladys ne peut pas les lire."
       }
     },
     {
@@ -115,8 +115,8 @@
         "fr": "Zones à tondre"
       },
       "description": {
-        "en": "Zone names as shown in the app, separated by commas. Empty: every zone of the map.",
-        "fr": "Noms des zones comme dans l'application, séparés par des virgules. Vide : toutes les zones de la carte."
+        "en": "Zone names as shown in the app, separated by commas. Empty: every zone of the map. Each mower also shows one \"Zone to mow – …\" switch per zone of its map.",
+        "fr": "Noms des zones comme dans l'application, séparés par des virgules. Vide : toutes les zones de la carte. Chaque tondeuse affiche aussi un interrupteur « Zone à tondre – … » par zone de sa carte."
       },
       "required": false,
       "default": ""
@@ -127,6 +127,10 @@
       "label": {
         "en": "Blade height (mm)",
         "fr": "Hauteur de coupe (mm)"
+      },
+      "description": {
+        "en": "Kept within the range of each mower model (e.g. 25 to 70 mm on a Luba 2).",
+        "fr": "Ramenée dans la plage de chaque modèle de tondeuse (par ex. 25 à 70 mm sur une Luba 2)."
       },
       "required": false,
       "default": 60,
@@ -229,22 +233,67 @@
         "en": "Path spacing (cm)",
         "fr": "Espacement des trajectoires (cm)"
       },
+      "description": {
+        "en": "Kept within the range of each mower model (e.g. 20 to 32 cm on a Luba 2).",
+        "fr": "Ramené dans la plage de chaque modèle de tondeuse (par ex. 20 à 32 cm sur une Luba 2)."
+      },
       "required": false,
       "default": 32,
       "min": 15,
       "max": 40
     },
     {
+      "key": "angle_mode",
+      "type": "select",
+      "label": {
+        "en": "Path angle",
+        "fr": "Angle de coupe de la trajectoire"
+      },
+      "description": {
+        "en": "Optimal: the mower chooses. Custom: the angle below. Random: a new angle for each job.",
+        "fr": "Optimal : la tondeuse choisit. Personnaliser : l'angle ci-dessous. Aléatoire : un nouvel angle à chaque tonte."
+      },
+      "required": false,
+      "default": "optimal",
+      "options": [
+        {
+          "value": "optimal",
+          "label": {
+            "en": "Optimal",
+            "fr": "Optimal"
+          }
+        },
+        {
+          "value": "custom",
+          "label": {
+            "en": "Custom",
+            "fr": "Personnaliser"
+          }
+        },
+        {
+          "value": "random",
+          "label": {
+            "en": "Random",
+            "fr": "Aléatoire"
+          }
+        }
+      ]
+    },
+    {
       "key": "mowing_angle",
       "type": "number",
       "label": {
-        "en": "Path angle (°)",
-        "fr": "Angle de coupe de la trajectoire (°)"
+        "en": "Custom path angle (°)",
+        "fr": "Angle personnalisé (°)"
+      },
+      "description": {
+        "en": "Used when the path angle is \"Custom\".",
+        "fr": "Utilisé quand l'angle de coupe est « Personnaliser »."
       },
       "required": false,
       "default": 111,
       "min": 0,
-      "max": 359
+      "max": 180
     },
     {
       "key": "mowing_pattern",
@@ -268,6 +317,13 @@
           "label": {
             "en": "Chessboard",
             "fr": "Damier"
+          }
+        },
+        {
+          "value": "zigzag_adaptive",
+          "label": {
+            "en": "Adaptive zigzag",
+            "fr": "Zigzag adaptatif"
           }
         }
       ]
@@ -327,7 +383,7 @@
       "required": false,
       "default": 0,
       "min": 0,
-      "max": 4
+      "max": 3
     },
     {
       "key": "mowing_order",
@@ -354,6 +410,22 @@
           }
         }
       ]
+    },
+    {
+      "key": "start_progress",
+      "type": "number",
+      "label": {
+        "en": "Start progress (%)",
+        "fr": "Progression du démarrage (%)"
+      },
+      "description": {
+        "en": "Start the job at this share of the zone: 0 starts from the beginning.",
+        "fr": "Commencer la tonte à ce pourcentage de la zone : 0 part du début."
+      },
+      "required": false,
+      "default": 0,
+      "min": 0,
+      "max": 99
     }
   ],
   "actions": [

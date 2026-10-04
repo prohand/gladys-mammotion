@@ -9,28 +9,49 @@ et le SDK [`@gladysassistant/integration-sdk`](https://github.com/GladysAssistan
 
 Chaque tondeuse du compte Mammotion devient un appareil Gladys avec :
 
-| Fonctionnalité   | Type Gladys             | Rôle                                                       |
-| ---------------- | ----------------------- | ---------------------------------------------------------- |
-| Tonte            | interrupteur (commande) | `1` = lancer une tonte ou reprendre, `0` = pause           |
-| Retour à la base | interrupteur (commande) | `1` = retour à la base, `0` = annuler le retour (¹)        |
-| Rafraîchir       | bouton poussoir         | demande son état à la tondeuse                             |
-| État             | texte                   | « En tonte », « En charge », « En pause », « Hors ligne »… |
-| Batterie         | batterie (%)            | niveau de charge                                           |
-| En charge        | entrée binaire          | `1` quand la tondeuse charge sur sa base                   |
-| Hauteur de coupe | distance (mm)           | hauteur des lames                                          |
-| Temps restant    | durée (min)             | temps restant de la tonte en cours                         |
-| Temps de tonte   | durée (h)               | compteur total                                             |
-| Distance totale  | distance (km)           | compteur total                                             |
-| Réglage – …      | liste (`text`/`select`) | réglages de la prochaine tonte (²)                         |
+| Fonctionnalité    | Type Gladys             | Rôle                                                       |
+| ----------------- | ----------------------- | ---------------------------------------------------------- |
+| Tonte             | interrupteur (commande) | `1` = lancer une tonte ou reprendre, `0` = pause           |
+| Retour à la base  | interrupteur (commande) | `1` = retour à la base, `0` = annuler le retour (¹)        |
+| Rafraîchir        | bouton poussoir         | demande son état à la tondeuse                             |
+| État              | texte                   | « En tonte », « En charge », « En pause », « Hors ligne »… |
+| Batterie          | batterie (%)            | niveau de charge                                           |
+| En charge         | entrée binaire          | `1` quand la tondeuse charge sur sa base                   |
+| Hauteur de coupe  | distance (mm)           | hauteur des lames                                          |
+| Avancement        | capteur (%)             | avancement de la tonte en cours                            |
+| Temps écoulé      | durée (min)             | temps écoulé de la tonte en cours                          |
+| Temps restant     | durée (min)             | temps restant de la tonte en cours                         |
+| Surface à tondre  | surface (m²)            | surface de la tonte (en cours ou dernière)                 |
+| Temps de tonte    | durée (h)               | compteur total                                             |
+| Distance totale   | distance (km)           | compteur total                                             |
+| Carte             | caméra (image)          | zones, zones interdites, position de la tondeuse (³)       |
+| Zone à tondre – … | interrupteur            | zones de la prochaine tonte (aucune allumée = toutes)      |
+| Réglage – …       | liste (`text`/`select`) | réglages de la prochaine tonte (²)                         |
 
-(²) Zones, hauteur, vitesse, espacement, angle, mode, tours de périmètre,
-détection d'obstacle, tours des zones interdites, ordre (`src/devices/settings.js`).
-Les listes partent de la section « Nouvelle tonte » de la configuration ; un
-choix sur l'appareil vaut pour cette tondeuse (Gladys garde la valeur dans
-`last_value_string`, relue au démarrage) ; une nouvelle valeur enregistrée
-dans la configuration s'applique à toutes. Les zones de la carte sont lues
-une fois au démarrage (`readZones`) puis à chaque tonte, et la liste est
-republiée (`supported_options`). Libellés pris dans le `config_schema`.
+(²) Hauteur, vitesse, espacement, type d'angle, angle (0 à 180°), mode
+(zigzag, damier, zigzag adaptatif), tours de périmètre, détection d'obstacle,
+tours des zones interdites (0 à 3), ordre, progression du démarrage (0 à 99 %)
+(`src/devices/settings.js`). Les plages suivent le modèle, lu dans le nom
+technique de la tondeuse (`src/mammotion/models.js`, tables de PyMammotion ;
+Luba 2 X : 25 à 70 mm, 0,2 à 0,8 m/s, 20 à 32 cm). Les listes partent de la
+section « Nouvelle tonte » de la configuration ; un choix sur l'appareil vaut
+pour cette tondeuse (Gladys garde la valeur dans `last_value_string`, ou
+`last_value` pour les interrupteurs de zones, relue au démarrage) ; une
+nouvelle valeur enregistrée dans la configuration s'applique à toutes. Les
+zones de la carte sont lues une fois au démarrage (`readZones`) puis à chaque
+tonte ; un interrupteur par zone (`zone-<nom sans accent>`) est publié. Libellés
+pris dans le `config_schema`.
+
+(³) Contour des zones (`NavGetCommData`, trame par trame, gardé en mémoire par
+hash) et position de la tondeuse (`report_info_data.locations`, en 1/10000 m,
+même repère). Image JPEG dessinée en JavaScript (`src/map/render.js`,
+`jpeg-js`), envoyée par `publishCameraImage` quand la tondeuse bouge (au plus
+toutes les 5 s) et sur demande (`onGetImage`).
+
+Type d'angle (`toward_mode` : 0 optimal, 1 personnalisé, 2 aléatoire) et
+zigzag adaptatif (`channelMode` 2) sont à confirmer sur la tondeuse : chaque
+trajet vu sur le broker, même lancé depuis l'application, est écrit dans les
+logs (« route settings seen »).
 
 (¹) Sur une tonte en pause, « stop » (`NavTaskCtrl` action 4) part avant
 « dock » (action 5) : un simple « dock » ramène la tondeuse mais laisse la
@@ -98,6 +119,8 @@ Deux boutons sont aussi disponibles dans l'écran de configuration :
 - `src/mammotion/report.js` : lecture des rapports protobuf (état, batterie,
   charge, hauteur de coupe, avancement, temps restant, compteurs).
 - `src/mammotion/telemetry.js` : lecture des propriétés (batterie, état…).
+- `src/mammotion/models.js` : plages des réglages par modèle.
+- `src/map/render.js` + `font.js` : image de la carte.
 - `src/devices/mower.js` : l'appareil Gladys et ses fonctionnalités.
 - `index.js` : branchement du SDK Gladys (découverte, poll, commandes, actions).
 

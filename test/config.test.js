@@ -7,6 +7,7 @@ import {
   GLADYS_POLL_FREQUENCIES_MS,
   hasCredentials,
   mowingZoneNames,
+  zoneSlug,
 } from '../src/config.js';
 
 test('normalizeConfig returns the defaults when called with no argument', () => {
@@ -71,4 +72,27 @@ test('mowingZoneNames splits the zone list', () => {
     'avant',
     'arrière',
   ]);
+});
+
+test('the new job settings: angle type, start progress, no-go laps', () => {
+  const config = normalizeConfig({
+    angle_mode: 'random',
+    start_progress: '150',
+    obstacle_laps: 4,
+    mowing_angle: 270,
+    mowing_pattern: 'zigzag_adaptive',
+  });
+  assert.equal(config.angle_mode, 'random');
+  assert.equal(config.start_progress, 99);
+  assert.equal(config.obstacle_laps, 3);
+  assert.equal(config.mowing_angle, 180);
+  assert.equal(config.mowing_pattern, 'zigzag_adaptive');
+  assert.equal(normalizeConfig({ angle_mode: 'north' }).angle_mode, 'optimal');
+});
+
+test('zoneSlug ignores case, accents and signs, and is stable', () => {
+  assert.equal(zoneSlug('Côté Sud'), 'cote-sud');
+  assert.equal(zoneSlug(' Jardin  (devant) '), 'jardin-devant');
+  assert.equal(zoneSlug(zoneSlug('Côté Sud')), 'cote-sud');
+  assert.equal(zoneSlug('***'), 'zone');
 });

@@ -19,6 +19,7 @@ import { assertAliyunOk, callAliyunApi, createAliyunSession } from './aliyun.js'
 import {
   buildHashListRequestContent,
   buildMapElementRequestContent,
+  buildMapFrameRequestContent,
   buildReportRequestContent,
   buildRouteContent,
   buildRouteQueryContent,
@@ -29,8 +30,9 @@ import {
 } from './commands.js';
 import { HttpError, requestJson } from './http.js';
 import { MammotionMqtt } from './mqtt.js';
-import { mowingZoneNames } from '../config.js';
+import { mowingZoneNames, zoneSlug } from '../config.js';
 import {
+  MAP_ELEMENT_OBSTACLE,
   MAP_ELEMENT_ZONE,
   parseHashList,
   parseMapElement,
@@ -62,6 +64,8 @@ const NAV_ANSWER_TIMEOUT_MS = 15_000;
 const COMMAND_GAP_MS = 2_000;
 // A map element list in more frames than this is not believed.
 const MAX_HASH_FRAMES = 50;
+// Same for the outline of one map element.
+const MAX_ELEMENT_FRAMES = 30;
 // DEV_NAVIGATION: the mowers that list their zones (all but the Luba 1).
 const NAVIGATION_BOARD = 17;
 
@@ -148,8 +152,10 @@ export class MammotionClient {
     this.lastSyncAt = new Map();
     this.lastReportRequestAt = new Map();
     this.navTimeoutMs = NAV_ANSWER_TIMEOUT_MS;
-    // iotId -> Map(hash -> { type, name }): map elements already read.
+    // iotId -> Map(hash -> { type, name, points }): map elements already read.
     this.mapElements = new Map();
+    // iotId -> { zones: [{ hash, name, points }], obstacles: [points] }: last map read.
+    this.maps = new Map();
     this.mqtt = new MammotionMqtt(() => this.getMqttCredentials(), onMqttUpdate);
   }
 
@@ -525,8 +531,10 @@ export class MammotionClient {
         logger.info(
           `${mower.name}: planning a route over ${zones.length} zone(s) ` +
             `(${zones.map((z) => z.name).join(', ')}), blade at ${settings.blade_height} mm, ` +
-            `${settings.mowing_speed} m/s, ${settings.line_spacing} cm, ${settings.mowing_angle}°, ` +
+            `${settings.mowing_speed} m/s, ${settings.line_spacing} cm, ` +
+            `angle ${settings.angle_mode} ${settings.mowing_angle}°, ` +
             `${settings.mowing_pattern}, ${settings.border_laps} border lap(s), ` +
+            `start at ${settings.start_progress} %, ` +
             `obstacle detection ${settings.obstacle_detection}`,
         );
         const content = buildRouteContent(session, mower, {
@@ -567,8 +575,9 @@ export class MammotionClient {
   /**
    * Every mowing zone of the map, named or not. The zone name list of the
    * mower only holds the zones named in the app: the full list comes from the
-   * hashes of the map elements, whose type is read once (zones, no-go zones,
-   * paths…). Falls back on the named zones if the mower does not send its hashes.
+   * hashes of the map elements, read once each (type, and the outline of the
+   * zones and no-go zones for the map image: see getMap). Falls back on the
+   * named zones if the mower does not send its hashes.
    * @returns {Promise<Array<{ hash: bigint, name: string }>>}
    */
   async listZones(session, mower) {
@@ -596,14 +605,8 @@ export class MammotionClient {
     const zones = [];
     let answering = true;
     for (const hash of hashes) {
-      // The name list only holds zones: no need to ask for their type.
-      if (!names.has(hash) && !known.has(hash) && answering) {
-        const element = await this.navRequest(
-          session,
-          mower,
-          buildMapElementRequestContent(session, mower, hash),
-          (nav) => parseMapElement(nav, hash),
-        );
+      if (!known.has(hash) && answering) {
+        const element = await this.readMapElement(session, mower, hash);
         if (element) {
           known.set(hash, element);
         } else {
@@ -621,8 +624,69 @@ export class MammotionClient {
     if (zones.length === 0) {
       throw new Error('No zone on the mower map');
     }
+    this.maps.set(mower.iotId, {
+      zones: zones.map((z) => ({ ...z, points: known.get(z.hash)?.points ?? [] })),
+      obstacles: hashes
+        .map((hash) => known.get(hash))
+        .filter((e) => e?.type === MAP_ELEMENT_OBSTACLE)
+        .map((e) => e.points),
+    });
     this.onZones?.(mower, zones);
     return zones;
+  }
+
+  /**
+   * One element of the map: its type and name (first frame), and the whole
+   * outline of a zone or a no-go zone (the next frames, one by one).
+   * Null when the mower does not send the first frame.
+   * @returns {Promise<{ type: number, name: string, points: Array<{ x: number, y: number }> } | null>}
+   */
+  async readMapElement(session, mower, hash) {
+    const head = await this.navRequest(
+      session,
+      mower,
+      buildMapElementRequestContent(session, mower, hash),
+      (nav) => parseMapElement(nav, hash),
+    );
+    if (!head) {
+      return null;
+    }
+    const element = { type: head.type, name: head.name, points: [...head.points] };
+    if (![MAP_ELEMENT_ZONE, MAP_ELEMENT_OBSTACLE].includes(head.type)) {
+      return element;
+    }
+    const total = Math.min(head.totalFrame, MAX_ELEMENT_FRAMES);
+    for (let frame = head.currentFrame + 1; frame <= total; frame++) {
+      const next = await this.navRequest(
+        session,
+        mower,
+        buildMapFrameRequestContent(session, mower, {
+          hash,
+          type: head.type,
+          action: head.action,
+          totalFrame: head.totalFrame,
+          currentFrame: frame - 1,
+        }),
+        (nav) => parseMapElement(nav, hash, frame),
+      );
+      if (!next) {
+        // Part of the outline only: still enough to see the zone.
+        logger.warn(`${mower.name}: frame ${frame}/${total} of map element ${hash} not received`);
+        break;
+      }
+      element.points.push(...next.points);
+    }
+    return element;
+  }
+
+  /**
+   * Last map read for a mower (zones with their outline and no-go zones), or
+   * null before the first zone list.
+   * @returns {{ zones: Array<{ hash: bigint, name: string, points: Array<{x: number, y: number}> }>,
+   *   obstacles: Array<Array<{x: number, y: number}>> } | null}
+   */
+  getMap(mower) {
+    return this.maps.get(mower.iotId) ?? null;
   }
 
   /**
@@ -719,21 +783,23 @@ export class MammotionClient {
   }
 }
 
-/**
- * Zones to mow: those named in the configuration (case does not matter), or
- * all of them.
- */
 /** Only the mowers of the Mammotion broker with a navigation board plan jobs. */
 export function canPlanJobs(mower) {
   return mower.cloud === 'mammotion' && receiverFor(mower) === NAVIGATION_BOARD;
 }
 
+/**
+ * Zones to mow: those chosen (names or zone keys, case and accents do not
+ * matter), or all of them.
+ */
 export function selectZones(zones, settings) {
   const wanted = mowingZoneNames(settings);
   if (wanted.length === 0) {
     return zones;
   }
-  const selected = zones.filter((z) => wanted.includes(z.name.toLowerCase()));
+  // Names typed in the configuration or keys of the zone switches.
+  const keys = new Set(wanted.map(zoneSlug));
+  const selected = zones.filter((z) => keys.has(zoneSlug(z.name)));
   if (selected.length === 0) {
     throw new Error(
       `None of the zones "${settings.mowing_zones}" is on the map ` +

@@ -15,29 +15,40 @@ Each mower of your Mammotion account shows up with:
 - **Refresh** (button): asks the mower for its state right now;
 - **Status**: Mowing (45 %), Charging, Paused, Returning to dock, Offline…;
 - **Battery** (%) and **Charging**;
-- **Blade height** (mm), **Remaining mowing time** (min);
+- **Blade height** (mm);
+- during a job: **Mowing progress** (%), **Elapsed** and **Remaining mowing
+  time** (min), **Area to mow** (m²);
 - **Total mowing time** (h), **Total distance** (km);
-- the **settings of the next job**, as "Setting – …" lists: zones, blade
-  height, speed, spacing, angle, pattern, perimeter laps, obstacle detection,
-  no-go zone laps, order.
+- **Map** (image, **Camera** widget of the dashboard): the zones (bright
+  green = zones of the next job, pale green = the others) with their name,
+  the no-go zones (grey) and the mower (red dot);
+- the **zones of the next job**: one "Zone to mow – …" switch per zone of
+  the map. Several zones can be on; none on = every zone;
+- the **other settings of the next job**, as "Setting – …" lists: blade
+  height, speed, spacing, angle type (optimal, custom, random), custom angle
+  (0 to 180°), pattern (zigzag, chessboard, adaptive zigzag), perimeter laps,
+  obstacle detection, no-go zone laps (0 to 3), order, start progress (0 to
+  99 %). The lists follow the ranges of the model: on a Luba 2 X for
+  instance, height from 25 to 70 mm by steps of 5, speed from 0.2 to 0.8 m/s,
+  spacing from 20 to 32 cm.
 
-> **Settings on the device** (like the Dreame integration): pick the values
-> in the lists of the mower (dashboard or scene), then turn **Mowing** on: the
-> job starts with these settings.
+> **Settings on the device** (like the Dreame integration): pick the zones
+> and the values in the lists of the mower (dashboard or scene), then turn
+> **Mowing** on: the job starts with these settings.
 >
 > - At first, the lists take the "New mowing job" section of the
 >   configuration.
 > - A choice in a list applies to that mower only.
 > - Saving a **new** value in the configuration applies it to every mower.
-> - The zone list fills with the zones of the map, read when the integration
->   starts ("Every zone" first).
+> - The zone switches show up once the map is read (when the integration
+>   starts, mower on), after **Update** in the **Discovery** tab.
 
 > **Start mowing** from Gladys (mower "Ready", on its dock or not), the way
 > Home Assistant does:
 >
 > - a job that stopped halfway (battery, rain…) carries on where it was;
 > - otherwise Gladys plans a route over **every zone** of the map (named or
->   not), or over those listed in "Zones to mow", with the settings of the
+>   not), or over those switched on in "Zone to mow – …", with the settings of the
 >   "New mowing job" section of the configuration (height, speed, spacing,
 >   angle, pattern, perimeter laps, obstacle detection…), then starts the job.
 >
@@ -72,8 +83,9 @@ same yes/no value, same use in a scene, no false alert.
 ## Scene ideas
 
 - Start mowing every Saturday at 10 am if it does not rain.
-- On Saturday, set "Setting – Zones to mow" to "Front" then turn "Mowing" on;
-  on Wednesday, pick "Every zone".
+- On Saturday, turn "Zone to mow – Front" and "Zone to mow – Side" on, the
+  others off, then turn "Mowing" on; on Wednesday, turn them all off (every
+  zone) then turn "Mowing" on.
 - Resume the paused job when the rain stops.
 - Send the mower back to its dock when the rain sensor detects rain.
 - Get a message when the status becomes "Location error".
@@ -82,9 +94,16 @@ same yes/no value, same use in a scene, no false alert.
 
 - **No "Setting – …" lists on the mower**: **Discovery** tab, **Update**
   button on the mower.
-- **The zone list only shows "Every zone"**: the mower has not sent its map
-  yet (off, offline). It is read again at the next start of the integration
-  and with each job started from Gladys.
+- **No "Zone to mow – …" switch, or the map says "Map not read yet"**: the
+  mower has not sent its map yet (off, offline). It is read again at the next
+  start of the integration and with each job started from Gladys. Then
+  **Update** in the **Discovery** tab.
+- **Show the map**: on the dashboard, add a **Camera** widget and pick the
+  mower. The image follows the mower during a job (at most every 15 s).
+- **Check a setting of the app**: start a job from the Mammotion app, then
+  look for "route settings seen" in the logs of the integration. The line
+  shows what the app sent (`towardMode` = angle type, `channelMode` =
+  pattern…).
 
 - **"Mammotion cloud unreachable"**: check the email and password, then click
   **Test the connection**.

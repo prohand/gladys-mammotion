@@ -9,10 +9,11 @@
 //   - Status          text    (Mowing (45 %), Charging, Paused…)
 //   - Battery         battery %  + Charging binary (see below)
 //   - Blade height    mm
-//   - Remaining time of the job (min)
+//   - Progress (%), elapsed and remaining time (min) and area (m²) of the job
 //   - Total mowing time (h) and total distance (km)
-//   - Settings of a new job (zones, height, speed…): drop-down lists
-//     (`text`/`select`), see settings.js
+//   - Map            camera image: zones, no-go zones and mower (see map/render.js)
+//   - Settings of a new job: one switch per zone, drop-down lists
+//     (`text`/`select`) for the others (height, speed…), see settings.js
 // Values are refreshed by polling, every `poll_frequency` seconds (Gladys
 // calls onPoll every 30 or 60 s, index.js skips the calls that come too early).
 //
@@ -49,12 +50,16 @@ import {
 import { devicePollFrequency } from '../config.js';
 import {
   getSetting,
-  knownZones,
-  SETTING_KEYS,
+  listKeysFor,
+  selectedZoneSlugs,
   settingFeatureKey,
   settingName,
   settingOptions,
+  zoneFeatureKey,
+  zoneName,
+  zoneSwitches,
 } from './settings.js';
+import { zoneSlug } from '../config.js';
 
 export const DEVICE_TYPE = 'mower';
 
@@ -71,6 +76,10 @@ export const FEATURE = {
   CHARGING: 'charging-state',
   BLADE_HEIGHT: 'blade-height',
   REMAINING_TIME: 'remaining-time',
+  PROGRESS: 'progress',
+  ELAPSED_TIME: 'elapsed-time',
+  JOB_AREA: 'job-area',
+  MAP: 'map',
   WORK_TIME: 'work-time',
   DISTANCE: 'distance',
   REFRESH: 'refresh',
@@ -88,6 +97,10 @@ const FEATURE_NAMES = {
   [FEATURE.CHARGING]: { en: 'Charging', fr: 'En charge' },
   [FEATURE.BLADE_HEIGHT]: { en: 'Blade height', fr: 'Hauteur de coupe' },
   [FEATURE.REMAINING_TIME]: { en: 'Remaining mowing time', fr: 'Temps de tonte restant' },
+  [FEATURE.PROGRESS]: { en: 'Mowing progress', fr: 'Avancement de la tonte' },
+  [FEATURE.ELAPSED_TIME]: { en: 'Elapsed mowing time', fr: 'Temps de tonte écoulé' },
+  [FEATURE.JOB_AREA]: { en: 'Area to mow', fr: 'Surface à tondre' },
+  [FEATURE.MAP]: { en: 'Map', fr: 'Carte' },
   [FEATURE.WORK_TIME]: { en: 'Total mowing time', fr: 'Temps de tonte total' },
   [FEATURE.DISTANCE]: { en: 'Total distance', fr: 'Distance totale' },
   [FEATURE.REFRESH]: { en: 'Refresh', fr: 'Rafraîchir' },
@@ -180,6 +193,28 @@ export function buildMowerDevice(gladys, mower, config) {
         { unit: DEVICE_FEATURE_UNITS.MINUTES, min: 0, max: 1440, keep_history: false },
       ),
       sensor(
+        FEATURE.PROGRESS,
+        name(FEATURE.PROGRESS),
+        // Gladys has no "progress" category: a generic sensor in %.
+        DEVICE_FEATURE_CATEGORIES.UNKNOWN,
+        DEVICE_FEATURE_TYPES.UNKNOWN.UNKNOWN,
+        { unit: DEVICE_FEATURE_UNITS.PERCENT, min: 0, max: 100, keep_history: false },
+      ),
+      sensor(
+        FEATURE.ELAPSED_TIME,
+        name(FEATURE.ELAPSED_TIME),
+        DEVICE_FEATURE_CATEGORIES.DURATION,
+        DEVICE_FEATURE_TYPES.DURATION.INTEGER,
+        { unit: DEVICE_FEATURE_UNITS.MINUTES, min: 0, max: 1440, keep_history: false },
+      ),
+      sensor(
+        FEATURE.JOB_AREA,
+        name(FEATURE.JOB_AREA),
+        DEVICE_FEATURE_CATEGORIES.SURFACE,
+        DEVICE_FEATURE_TYPES.SURFACE.DECIMAL,
+        { unit: DEVICE_FEATURE_UNITS.SQUARE_METER, min: 0, max: 100000, keep_history: false },
+      ),
+      sensor(
         FEATURE.WORK_TIME,
         name(FEATURE.WORK_TIME),
         DEVICE_FEATURE_CATEGORIES.DURATION,
@@ -205,7 +240,31 @@ export function buildMowerDevice(gladys, mower, config) {
         has_feedback: false,
         keep_history: false,
       },
-      ...SETTING_KEYS.map((key) => ({
+      {
+        // Camera image drawn from the map (publishCameraImage / onGetImage).
+        name: name(FEATURE.MAP),
+        external_id: ids.feature(FEATURE.MAP),
+        category: DEVICE_FEATURE_CATEGORIES.CAMERA,
+        type: DEVICE_FEATURE_TYPES.CAMERA.IMAGE,
+        min: 0,
+        max: 0,
+        read_only: true,
+        has_feedback: false,
+        keep_history: false,
+      },
+      ...zoneSwitches(mower).map((zone) => ({
+        name: zoneName(zone, config.language),
+        external_id: ids.feature(zoneFeatureKey(zone)),
+        category: DEVICE_FEATURE_CATEGORIES.SWITCH,
+        type: DEVICE_FEATURE_TYPES.SWITCH.BINARY,
+        min: 0,
+        max: 1,
+        read_only: false,
+        // Gladys saves the switch position itself (last_value).
+        has_feedback: false,
+        keep_history: false,
+      })),
+      ...listKeysFor(mower).map((key) => ({
         name: settingName(key, config.language),
         external_id: ids.feature(settingFeatureKey(key)),
         category: DEVICE_FEATURE_CATEGORIES.TEXT,
@@ -219,20 +278,27 @@ export function buildMowerDevice(gladys, mower, config) {
         supported_options: settingOptions(key, {
           language: config.language,
           current: getSetting(mower, key, config),
-          zones: knownZones(mower),
+          mower,
         }),
       })),
     ],
   };
 }
 
-/** States of the setting lists: the value selected for this mower. */
+/** States of the setting lists and zone switches: the values selected for this mower. */
 export function buildSettingStates(gladys, mower, config) {
   const ids = mowerIds(gladys, mower);
-  return SETTING_KEYS.map((key) => ({
-    device_feature_external_id: ids.feature(settingFeatureKey(key)),
-    text: getSetting(mower, key, config),
-  }));
+  const zones = selectedZoneSlugs(getSetting(mower, 'mowing_zones', config));
+  return [
+    ...zoneSwitches(mower).map((zone) => ({
+      device_feature_external_id: ids.feature(zoneFeatureKey(zone)),
+      state: zones.has(zoneSlug(zone)) ? 1 : 0,
+    })),
+    ...listKeysFor(mower).map((key) => ({
+      device_feature_external_id: ids.feature(settingFeatureKey(key)),
+      text: getSetting(mower, key, config),
+    })),
+  ];
 }
 
 /**
@@ -274,9 +340,20 @@ export function buildMowerStates(gladys, mower, status, config) {
   push(FEATURE.BATTERY, status.battery);
   push(FEATURE.BLADE_HEIGHT, status.bladeHeightMm);
   // The mower keeps the time of its last job: it only means something during a job.
+  const inJob = workMode !== null && (isMowing(workMode) || isPaused(workMode));
   if (workMode !== null && status.remainingMinutes !== undefined) {
-    const inJob = isMowing(workMode) || isPaused(workMode);
     push(FEATURE.REMAINING_TIME, inJob ? status.remainingMinutes : 0);
+  }
+  if (workMode !== null && status.progressPercent !== undefined) {
+    push(FEATURE.PROGRESS, inJob ? status.progressPercent : 0);
+  }
+  if (workMode !== null && status.totalMinutes !== undefined) {
+    const elapsed = Math.max(0, status.totalMinutes - (status.remainingMinutes ?? 0));
+    push(FEATURE.ELAPSED_TIME, inJob ? elapsed : 0);
+  }
+  // The area of the last job stays meaningful after it.
+  if (status.jobAreaM2 > 0) {
+    push(FEATURE.JOB_AREA, status.jobAreaM2);
   }
   push(FEATURE.WORK_TIME, status.totalWorkHours);
   push(FEATURE.DISTANCE, status.totalDistanceKm);

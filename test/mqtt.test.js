@@ -92,7 +92,14 @@ test('protobuf reports carry the charge state, job progress and maintenance', ()
     varintField(20, 55),
   );
   const maintain = message(varintField(1, 155528), varintField(2, 683720));
-  const report = message(bytesField(2, dev), bytesField(5, work), bytesField(7, maintain));
+  // The mower at x = 12.5 m, y = -3.25 m (int32: a negative value on 10 bytes).
+  const location = message(varintField(1, 125_000), varintField(2, 2n ** 64n - 32_500n));
+  const report = message(
+    bytesField(2, dev),
+    bytesField(4, location),
+    bytesField(5, work),
+    bytesField(7, maintain),
+  );
   const content = message(varintField(1, 244), bytesField(10, message(bytesField(39, report))));
   mqtt.handleMessage(
     '/sys/pk/Luba-VP/thing/event/device_protobuf_msg_event/post',
@@ -102,6 +109,9 @@ test('protobuf reports carry the charge state, job progress and maintenance', ()
   assert.equal(status.charging, false);
   assert.equal(status.progressPercent, 45);
   assert.equal(status.remainingMinutes, 38);
+  assert.equal(status.totalMinutes, 120);
+  assert.equal(status.jobAreaM2, 300);
+  assert.deepEqual(status.position, { x: 12.5, y: -3.25 });
   assert.equal(status.bladeHeightMm, 55);
   assert.equal(status.totalDistanceKm, 155.5);
   assert.equal(status.totalWorkHours, 189.9);

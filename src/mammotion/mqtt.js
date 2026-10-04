@@ -15,7 +15,7 @@
 
 import mqtt from 'mqtt';
 import { createLogger } from '@gladysassistant/integration-sdk';
-import { parseNav, parseReport } from './report.js';
+import { parseNav, parseReport, parseRouteSettings } from './report.js';
 import { parseProperties } from './telemetry.js';
 
 const logger = createLogger({ name: 'mammotion-mqtt' });
@@ -56,6 +56,23 @@ function parseJson(buffer) {
     return JSON.parse(buffer.toString('utf8'));
   } catch {
     return null;
+  }
+}
+
+/**
+ * Log the settings of a route the mower acknowledges, whoever planned it: a
+ * job started from the app shows here which values its choices send (angle
+ * type, path mode…), to check the lists of Gladys against the app.
+ */
+function logRoute(deviceName, content) {
+  try {
+    const nav = parseNav(content);
+    const route = nav ? parseRouteSettings(nav) : null;
+    if (route) {
+      logger.info(`${deviceName}: route settings seen ${JSON.stringify(route)}`);
+    }
+  } catch (err) {
+    logger.debug(`Unreadable route: ${err.message}`);
   }
 }
 
@@ -258,6 +275,7 @@ export class MammotionMqtt {
     } else if (topic.endsWith('/device_protobuf_msg_event/post')) {
       const content = message.params?.content ?? message.params?.value?.content;
       this.resolveNav(device.iotId, content);
+      logRoute(parts[3], content);
       const report = parseReport(content);
       if (!report) {
         return;

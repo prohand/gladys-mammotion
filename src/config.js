@@ -27,12 +27,14 @@ export const DEFAULT_CONFIG = {
   blade_height: 60, // mm
   mowing_speed: 0.6, // m/s
   line_spacing: 32, // cm between two passes
-  mowing_angle: 111, // degrees, angle of the passes
-  mowing_pattern: 'zigzag', // 'zigzag' | 'chessboard'
+  angle_mode: 'optimal', // 'optimal' | 'custom' | 'random', how the angle is chosen
+  mowing_angle: 111, // degrees, angle of the passes (used with angle_mode 'custom')
+  mowing_pattern: 'zigzag', // 'zigzag' | 'chessboard' | 'zigzag_adaptive'
   border_laps: 0, // laps around the perimeter
   obstacle_laps: 0, // laps around the no-go zones
   obstacle_detection: 'off', // 'off' | 'slow' | 'less'
   mowing_order: 'zigzag_first', // 'zigzag_first' | 'border_first'
+  start_progress: 0, // %, where the job starts in the zone (0: from the beginning)
 };
 
 // Bounds of the mowing settings, kept in sync with the manifest `min` / `max`.
@@ -40,13 +42,15 @@ export const MOWING_BOUNDS = {
   blade_height: [15, 100],
   mowing_speed: [0.2, 1.2],
   line_spacing: [15, 40],
-  mowing_angle: [0, 359],
+  mowing_angle: [0, 180],
   border_laps: [0, 4],
-  obstacle_laps: [0, 4],
+  obstacle_laps: [0, 3],
+  start_progress: [0, 99],
 };
 
 const MOWING_CHOICES = {
-  mowing_pattern: ['zigzag', 'chessboard'],
+  angle_mode: ['optimal', 'custom', 'random'],
+  mowing_pattern: ['zigzag', 'chessboard', 'zigzag_adaptive'],
   obstacle_detection: ['off', 'slow', 'less'],
   mowing_order: ['zigzag_first', 'border_first'],
 };
@@ -105,6 +109,8 @@ export function normalizeConfig(raw = {}) {
     mowing_angle: clampNumber('mowing_angle', raw.mowing_angle),
     border_laps: clampNumber('border_laps', raw.border_laps),
     obstacle_laps: clampNumber('obstacle_laps', raw.obstacle_laps),
+    start_progress: clampNumber('start_progress', raw.start_progress),
+    angle_mode: choice('angle_mode', raw.angle_mode),
     mowing_pattern: choice('mowing_pattern', raw.mowing_pattern),
     obstacle_detection: choice('obstacle_detection', raw.obstacle_detection),
     mowing_order: choice('mowing_order', raw.mowing_order),
@@ -122,4 +128,21 @@ export function mowingZoneNames(config) {
     .split(',')
     .map((name) => name.trim().toLowerCase())
     .filter(Boolean);
+}
+
+/**
+ * Stable key of a zone name: no case, no accent, dashes ("Côté Sud" ->
+ * "cote-sud"). Used in the external_id of the zone switches, and to match
+ * the zones chosen by the user with the zones of the map. A key of a key is
+ * the same key, so a list may mix names and keys.
+ */
+export function zoneSlug(name) {
+  return (
+    String(name ?? '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'zone'
+  );
 }
