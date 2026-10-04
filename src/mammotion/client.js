@@ -94,6 +94,14 @@ export function isAuthError(err) {
   return AUTH_ERROR_HINTS.some((hint) => message.includes(hint));
 }
 
+/**
+ * Name of a zone left unnamed in the app. The app numbers them by their place
+ * in the map from 0: the second zone of the map is "Zone 1".
+ */
+export function defaultZoneName(index) {
+  return `Zone ${index}`;
+}
+
 function decodeJwtClaims(token) {
   const payload = String(token).split('.')[1];
   if (!payload) {
@@ -595,7 +603,7 @@ export class MammotionClient {
           named ? 'No zone on the mower map' : 'The mower did not send its zones, try again',
         );
       }
-      const zones = named.map((z, i) => ({ hash: z.hash, name: z.name || `zone ${i + 1}` }));
+      const zones = named.map((z, i) => ({ hash: z.hash, name: z.name || defaultZoneName(i) }));
       this.onZones?.(mower, zones);
       return zones;
     }
@@ -619,7 +627,7 @@ export class MammotionClient {
       }
     }
     zones.forEach((zone, i) => {
-      zone.name ||= `zone ${i + 1}`;
+      zone.name ||= defaultZoneName(i);
     });
     if (zones.length === 0) {
       throw new Error('No zone on the mower map');

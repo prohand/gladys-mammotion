@@ -26,14 +26,17 @@ Chaque tondeuse de votre compte Mammotion apparaît avec :
 - les **zones de la prochaine tonte** : un interrupteur « Zone à tondre – … »
   par zone de la carte. Plusieurs zones peuvent être allumées ; aucune
   allumée = toutes les zones ;
-- les **autres réglages de la prochaine tonte**, en listes « Réglage – … » :
-  hauteur de coupe, vitesse, espacement, type d'angle (optimal, personnaliser,
-  aléatoire), angle personnalisé (0 à 180°), mode de trajectoire (zigzag,
-  damier, zigzag adaptatif), tours de périmètre, détection d'obstacle, tours
-  des zones interdites (0 à 3), ordre, progression du démarrage (0 à 99 %).
-  Les listes suivent les plages du modèle : par exemple sur une Luba 2 X,
-  hauteur de 25 à 70 mm par pas de 5, vitesse de 0,2 à 0,8 m/s, espacement de
-  20 à 32 cm.
+- les **autres réglages de la prochaine tonte**, « Réglage – … » : en listes
+  pour la hauteur de coupe, la vitesse, l'espacement, le type d'angle
+  (optimal, personnaliser, aléatoire), le mode de trajectoire (zigzag, damier,
+  zigzag adaptatif), les tours de périmètre, la détection d'obstacle, les tours
+  des zones interdites (0 à 3) et l'ordre ; en curseurs pour l'angle
+  personnalisé (0 à 180°, comme dans l'appli) et la progression du démarrage
+  (0 à 99 %). Les listes suivent les plages du modèle : par exemple sur une
+  Luba 2 X, hauteur de 25 à 70 mm par pas de 5, vitesse de 0,2 à 0,8 m/s,
+  espacement de 20 à 35 cm.
+- les **zones sans nom** dans l'appli s'appellent comme dans l'appli
+  (« Zone 1 », « Zone 4 »…).
 
 > **Réglages sur l'appareil** (comme l'intégration Dreame) : choisissez les
 > zones et les valeurs dans les listes de la tondeuse (tableau de bord ou

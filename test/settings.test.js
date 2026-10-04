@@ -8,6 +8,7 @@ import {
   getSetting,
   LIST_KEYS,
   listKeysFor,
+  isSlider,
   loadMowerSettings,
   mowerSettings,
   rememberZones,
@@ -35,10 +36,10 @@ beforeEach(() => resetSettings());
 
 const option = (key, value) => settingOptions(key, { language: 'fr', current: value });
 
-test('every mowing setting but the zones is a select list of the device', () => {
+test('every mowing setting but the zones, the angle and the start progress is a select list of the device', () => {
   const device = buildMowerDevice(gladys, luba, config);
   assert.ok(!device.features.some((f) => f.external_id.endsWith(':setting-mowing-zones')));
-  for (const key of LIST_KEYS) {
+  for (const key of LIST_KEYS.filter((k) => !isSlider(k))) {
     const feature = device.features.find((f) =>
       f.external_id.endsWith(`:${settingFeatureKey(key)}`),
     );
@@ -58,8 +59,34 @@ test('every mowing setting but the zones is a select list of the device', () => 
     assert.ok(values.includes(getSetting(luba, key, config)), key);
   }
   assert.equal(settingKeyOf('setting-blade-height'), 'blade_height');
+  assert.equal(settingKeyOf('setting-mowing-angle'), 'mowing_angle');
   assert.equal(settingKeyOf('setting-mowing-zones'), null);
   assert.equal(settingKeyOf('mowing'), null);
+});
+
+test('the angle and the start progress are sliders, 1 by 1, without options', () => {
+  const device = buildMowerDevice(gladys, luba2x, config);
+  const slider = (key) => device.features.find((f) => f.external_id.endsWith(`:${key}`));
+  for (const [key, max] of [
+    ['setting-mowing-angle', 180],
+    ['setting-start-progress', 99],
+  ]) {
+    const feature = slider(key);
+    assert.equal(feature.category, DEVICE_FEATURE_CATEGORIES.SWITCH);
+    assert.equal(feature.type, DEVICE_FEATURE_TYPES.SWITCH.DIMMER);
+    assert.deepEqual([feature.min, feature.max, feature.step], [0, max, 1]);
+    // An empty list removes the options of the lists of 1.1.0.
+    assert.deepEqual(feature.supported_options, []);
+  }
+  // Gladys takes 100 KB when the device page saves the device, map image included.
+  const options = device.features.flatMap((f) => f.supported_options ?? []);
+  assert.ok(options.length < 100, `${options.length} options`);
+  loadMowerSettings(luba2x, config, () => undefined);
+  setSetting(luba2x, 'mowing_angle', 45);
+  assert.throws(() => setSetting(luba2x, 'mowing_angle', '45.5'), /Invalid/);
+  const states = buildSettingStates(gladys, luba2x, config);
+  const angle = states.find((s) => s.device_feature_external_id.endsWith(':setting-mowing-angle'));
+  assert.equal(angle.state, 45);
 });
 
 test('the lists are labeled from the manifest, in the chosen language', () => {
@@ -105,8 +132,8 @@ test('the lists follow the range of the mower model (Luba 2 X)', () => {
   assert.deepEqual(values('mowing_speed'), [0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8]);
   const spacings = values('line_spacing');
   assert.equal(spacings[0], 20);
-  assert.equal(spacings.at(-1), 32);
-  assert.equal(spacings.length, 13);
+  assert.equal(spacings.at(-1), 35);
+  assert.equal(spacings.length, 16);
   assert.deepEqual(values('obstacle_laps'), [0, 1, 2, 3]);
   const angles = values('mowing_angle');
   assert.equal(angles.length, 181);
@@ -159,7 +186,8 @@ test('the zone switches pick the zones of the next job; none means every zone', 
   const states = Object.fromEntries(
     buildSettingStates(gladys, luba, config)
       .filter((s) => s.state !== undefined)
-      .map((s) => [s.device_feature_external_id.split(':').pop(), s.state]),
+      .map((s) => [s.device_feature_external_id.split(':').pop(), s.state])
+      .filter(([key]) => key.startsWith('zone-')),
   );
   assert.deepEqual(states, { 'zone-devant': 1, 'zone-cote-sud': 1, 'zone-bas': 0 });
   setZone(luba, 'cote-sud', false, config);

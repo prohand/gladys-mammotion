@@ -258,6 +258,15 @@ const TOWARD_MODES = { optimal: 0, custom: 1, random: 2 };
 const INCLUDED_ANGLE = 90;
 
 /**
+ * `toward` of a route for an angle chosen as in the app. The mower counts the
+ * angle the other way round: 111 sent was shown "Personnaliser 69" in the app
+ * (180 - 111), so the app angle is turned back before it is sent.
+ */
+export function towardOf(angle) {
+  return (180 - (Number(angle) || 0)) % 180;
+}
+
+/**
  * 8-byte `reserved` string of a route (PyMammotion create_path_order): mowing
  * order (0 border first, 1 zigzag first), laps around the no-go zones, plan
  * enabled (0), start progress (%), then the model byte (8 on Luba 2 and later,
@@ -292,7 +301,7 @@ export function buildRouteContent(session, mower, { zones, settings }) {
     varintField(8, settings.line_spacing), // channelWidth (cm)
     varintField(9, ULTRA_WAVE[settings.obstacle_detection] ?? 0), // UltraWave: obstacle detection
     varintField(10, CHANNEL_MODES[settings.mowing_pattern] ?? 0), // channelMode
-    varintField(11, settings.mowing_angle), // toward (degrees)
+    varintField(11, towardOf(settings.mowing_angle)), // toward (degrees, see towardOf)
     floatField(12, settings.mowing_speed), // speed (m/s)
     packedFixed64Field(13, zones), // zoneHashs
     stringField(15, pathOrder(mower, settings)), // reserved

@@ -555,7 +555,8 @@ test('the map keeps the outline of the zones and no-go zones', async () => {
     [
       ['Avant', 4],
       ['Arrière', 4],
-      ['zone 3', 4],
+      // Unnamed: numbered from 0, as the app does.
+      ['Zone 2', 4],
     ],
   );
   assert.deepEqual(map.zones[2].points[2], { x: 10, y: 10 });
@@ -572,7 +573,7 @@ test('startJob reads a map element only once', async () => {
 
 test('startJob mows only the zones named in the configuration', async () => {
   const { client, mower } = startJobFixture();
-  await client.startJob(mower, normalizeConfig({ mowing_zones: 'arrière, Zone 3' }));
+  await client.startJob(mower, normalizeConfig({ mowing_zones: 'arrière, Zone 2' }));
   assert.deepEqual(zoneHashes(sentRoute()), [2n ** 63n + 5n, 21n]);
 });
 

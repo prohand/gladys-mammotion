@@ -12,8 +12,9 @@
 //   - Progress (%), elapsed and remaining time (min) and area (m²) of the job
 //   - Total mowing time (h) and total distance (km)
 //   - Map            camera image: zones, no-go zones and mower (see map/render.js)
-//   - Settings of a new job: one switch per zone, drop-down lists
-//     (`text`/`select`) for the others (height, speed…), see settings.js
+//   - Settings of a new job: one switch per zone, sliders for the angle and
+//     the start progress, drop-down lists (`text`/`select`) for the others
+//     (height, speed…), see settings.js
 // Values are refreshed by polling, every `poll_frequency` seconds (Gladys
 // calls onPoll every 30 or 60 s, index.js skips the calls that come too early).
 //
@@ -55,6 +56,9 @@ import {
   settingFeatureKey,
   settingName,
   settingOptions,
+  settingRange,
+  settingStep,
+  sliderKeysFor,
   zoneFeatureKey,
   zoneName,
   zoneSwitches,
@@ -281,6 +285,24 @@ export function buildMowerDevice(gladys, mower, config) {
           mower,
         }),
       })),
+      ...sliderKeysFor(mower).map((key) => {
+        const [min, max] = settingRange(mower, key);
+        return {
+          name: settingName(key, config.language),
+          external_id: ids.feature(settingFeatureKey(key)),
+          category: DEVICE_FEATURE_CATEGORIES.SWITCH,
+          type: DEVICE_FEATURE_TYPES.SWITCH.DIMMER,
+          min,
+          max,
+          step: settingStep(key),
+          read_only: false,
+          // Gladys saves the chosen value itself (last_value).
+          has_feedback: false,
+          keep_history: false,
+          // These were lists before 1.1.1: an empty list removes their old options.
+          supported_options: [],
+        };
+      }),
     ],
   };
 }
@@ -297,6 +319,10 @@ export function buildSettingStates(gladys, mower, config) {
     ...listKeysFor(mower).map((key) => ({
       device_feature_external_id: ids.feature(settingFeatureKey(key)),
       text: getSetting(mower, key, config),
+    })),
+    ...sliderKeysFor(mower).map((key) => ({
+      device_feature_external_id: ids.feature(settingFeatureKey(key)),
+      state: Number(getSetting(mower, key, config)),
     })),
   ];
 }

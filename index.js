@@ -29,6 +29,7 @@ import { buildMowerStates, buildSettingStates, commandFor, mowerIds } from './sr
 import {
   applyConfigChanges,
   getSetting,
+  isSlider,
   knownZones,
   loadMowerSettings,
   mowerSettings,
@@ -128,6 +129,10 @@ function storedSetting(mower, key) {
     }
   }
   const feature = features.find((f) => f.external_id === ids.feature(settingFeatureKey(key)));
+  // A slider keeps a number; before 1.1.1 it was a list (last_value_string).
+  if (isSlider(key) && Number.isFinite(feature?.last_value) && feature.type !== 'select') {
+    return String(feature.last_value);
+  }
   return feature?.last_value_string;
 }
 
