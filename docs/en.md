@@ -19,11 +19,13 @@ Each mower of your Mammotion account shows up with:
 - during a job: **Mowing progress** (%), **Elapsed** and **Remaining mowing
   time** (min), **Area to mow** (m²);
 - **Total mowing time** (h), **Total distance** (km);
-- **Map** (image, **Camera** widget of the dashboard): the zones (bright
-  green = zones of the next job, pale green = the others) with their name,
-  the no-go zones (grey) and the mower (red dot);
+- **Map**: a device of its own, "<mower> – Map" (image, **Camera** widget
+  of the dashboard): the zones (bright green = zones of the next job, pale
+  green = the others) with their name, the no-go zones (grey) and the mower
+  (red dot);
 - the **zones of the next job**: one "Zone to mow – …" switch per zone of
-  the map. Several zones can be on; none on = every zone;
+  the map. Several zones can be on; none on = every zone. The zones are
+  mowed in the order they are switched on, as in the app;
 - the **other settings of the next job**, "Setting – …": lists for the blade
   height, speed, spacing, angle type (optimal, custom, random), pattern
   (zigzag, chessboard, adaptive zigzag), perimeter laps, obstacle detection,
@@ -100,8 +102,8 @@ same yes/no value, same use in a scene, no false alert.
   mower has not sent its map yet (off, offline). It is read again at the next
   start of the integration and with each job started from Gladys. Then
   **Update** in the **Discovery** tab.
-- **Show the map**: on the dashboard, add a **Camera** widget and pick the
-  mower. The image follows the mower during a job (at most every 15 s).
+- **Show the map**: **Discovery** tab, add the "<mower> – Map" device, then
+  on the dashboard add a **Camera** widget and pick that device. The image follows the mower during a job (at most every 15 s).
 - **Check a setting of the app**: start a job from the Mammotion app, then
   look for "route settings seen" in the logs of the integration. The line
   shows what the app sent (`towardMode` = angle type, `channelMode` =

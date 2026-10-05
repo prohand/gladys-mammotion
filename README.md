@@ -24,7 +24,7 @@ Chaque tondeuse du compte Mammotion devient un appareil Gladys avec :
 | Surface à tondre  | surface (m²)                | surface de la tonte (en cours ou dernière)                               |
 | Temps de tonte    | durée (h)                   | compteur total                                                           |
 | Distance totale   | distance (km)               | compteur total                                                           |
-| Carte             | caméra (image)              | zones, zones interdites, position de la tondeuse (³)                     |
+| Carte             | caméra (image)              | appareil à part : zones, zones interdites, tondeuse (³)                  |
 | Zone à tondre – … | interrupteur                | zones de la prochaine tonte (aucune allumée = toutes)                    |
 | Réglage – …       | liste (`text`/`select`)     | réglages de la prochaine tonte (²)                                       |
 | Réglage – Angle…  | curseur (`switch`/`dimmer`) | angle personnalisé (0 à 180°) et progression du démarrage (0 à 99 %) (⁴) |
@@ -52,7 +52,11 @@ l'attend (`toward` = 180 − angle de l'appli).
 hash) et position de la tondeuse (`report_info_data.locations`, en 1/10000 m,
 même repère). Image JPEG dessinée en JavaScript (`src/map/render.js`,
 `jpeg-js`), envoyée par `publishCameraImage` quand la tondeuse bouge (au plus
-toutes les 5 s) et sur demande (`onGetImage`).
+toutes les 5 s), au moins toutes les 45 min (Gladys ne sert plus une image de
+plus d'une heure) et sur demande (`onGetImage`). La carte est un appareil à
+part (`mower-map:<iotId>`) : le widget Caméra prend chaque nouvel état de son
+appareil pour l'image, sur l'appareil tondeuse elle disparaissait à chaque
+valeur (batterie, état…).
 
 Type d'angle (`toward_mode` : 0 optimal, 1 personnalisé, 2 aléatoire) et
 zigzag adaptatif (`channelMode` 2) sont à confirmer sur la tondeuse : chaque

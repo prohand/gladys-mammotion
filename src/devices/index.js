@@ -7,7 +7,7 @@
 // (onPoll / onSetValue) back to the right mower.
 // -----------------------------------------------------------------------------
 
-import { buildMowerDevice, featureKeyOf, mowerIds } from './mower.js';
+import { buildMapDevice, buildMowerDevice, featureKeyOf, mapIds, mowerIds } from './mower.js';
 
 /** @type {Array<{ iotId: string, name: string, productKey: string, deviceName: string, series: string }>} */
 let mowers = [];
@@ -33,14 +33,22 @@ export function lastKnownWorkMode(mower) {
   return lastWorkMode.get(mower.iotId) ?? null;
 }
 
-/** Discovery payload for Gladys (one device per mower). */
+/** Discovery payload for Gladys (per mower: the mower and its map). */
 export function buildDiscoveredDevices(gladys, config) {
-  return mowers.map((mower) => buildMowerDevice(gladys, mower, config));
+  return mowers.flatMap((mower) => [
+    buildMowerDevice(gladys, mower, config),
+    buildMapDevice(gladys, mower, config),
+  ]);
 }
 
 /** Find the mower behind a Gladys device, from its external_id. */
 export function findMowerByDevice(gladys, device) {
   return mowers.find((mower) => mowerIds(gladys, mower).device === device.external_id);
+}
+
+/** Find the mower behind a map device, from its external_id. */
+export function findMowerByMap(gladys, device) {
+  return mowers.find((mower) => mapIds(gladys, mower).device === device.external_id);
 }
 
 /** Find the mower and the feature key behind a feature external_id. */
