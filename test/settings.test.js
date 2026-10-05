@@ -208,6 +208,15 @@ test('the zones are read back from the switches Gladys keeps', () => {
     'devant,cote-sud',
   );
   assert.equal(zonesFromSwitches([{ key: 'zone-bas', value: 0 }]), ALL_ZONES);
+  // In the order they were switched ON.
+  assert.equal(
+    zonesFromSwitches([
+      { key: 'zone-devant', value: 1, changed: '2026-10-05T14:02:00.000Z' },
+      { key: 'zone-bas', value: 1, changed: '2026-10-05T14:00:00.000Z' },
+      { key: 'zone-cote-sud', value: 1, changed: '2026-10-05T14:01:00.000Z' },
+    ]),
+    'bas,cote-sud,devant',
+  );
 });
 
 test('a value picked on the device is used by the next job of that mower only', () => {

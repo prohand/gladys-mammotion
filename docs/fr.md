@@ -20,12 +20,14 @@ Chaque tondeuse de votre compte Mammotion apparaît avec :
 - pendant une tonte : **Avancement de la tonte** (%), **Temps de tonte
   écoulé** et **restant** (min), **Surface à tondre** (m²) ;
 - **Temps de tonte total** (h), **Distance totale** (km) ;
-- **Carte** (image, widget **Caméra** du tableau de bord) : les zones (vert
-  vif = zones de la prochaine tonte, vert pâle = les autres) avec leur nom,
-  les zones interdites (gris) et la tondeuse (point rouge) ;
+- **Carte** : un appareil à part, « <tondeuse> – Carte » (image, widget
+  **Caméra** du tableau de bord) : les zones (vert vif = zones de la
+  prochaine tonte, vert pâle = les autres) avec leur nom, les zones
+  interdites (gris) et la tondeuse (point rouge) ;
 - les **zones de la prochaine tonte** : un interrupteur « Zone à tondre – … »
   par zone de la carte. Plusieurs zones peuvent être allumées ; aucune
-  allumée = toutes les zones ;
+  allumée = toutes les zones. Les zones sont tondues dans l'ordre où on les
+  allume, comme dans l'appli ;
 - les **autres réglages de la prochaine tonte**, « Réglage – … » : en listes
   pour la hauteur de coupe, la vitesse, l'espacement, le type d'angle
   (optimal, personnaliser, aléatoire), le mode de trajectoire (zigzag, damier,
@@ -112,8 +114,9 @@ une scène, sans fausse alerte.
   réseau). Elle est relue au prochain démarrage de l'intégration et à chaque
   tonte lancée par Gladys. Puis **Mettre à jour** dans l'onglet
   **Découverte**.
-- **Afficher la carte** : sur le tableau de bord, ajoutez un widget
-  **Caméra** et choisissez la tondeuse. L'image suit la tondeuse pendant la
+- **Afficher la carte** : onglet **Découverte**, ajoutez l'appareil
+  « <tondeuse> – Carte », puis sur le tableau de bord ajoutez un widget
+  **Caméra** et choisissez cet appareil. L'image suit la tondeuse pendant la
   tonte (au plus toutes les 15 s).
 - **Vérifier un réglage de l'application** : lancez une tonte depuis
   l'application Mammotion, puis cherchez « route settings seen » dans les

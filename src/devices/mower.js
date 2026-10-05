@@ -11,10 +11,11 @@
 //   - Blade height    mm
 //   - Progress (%), elapsed and remaining time (min) and area (m²) of the job
 //   - Total mowing time (h) and total distance (km)
-//   - Map            camera image: zones, no-go zones and mower (see map/render.js)
 //   - Settings of a new job: one switch per zone, sliders for the angle and
 //     the start progress, drop-down lists (`text`/`select`) for the others
 //     (height, speed…), see settings.js
+// The map (camera image: zones, no-go zones and mower) is a second device,
+// see buildMapDevice.
 // Values are refreshed by polling, every `poll_frequency` seconds (Gladys
 // calls onPoll every 30 or 60 s, index.js skips the calls that come too early).
 //
@@ -244,18 +245,6 @@ export function buildMowerDevice(gladys, mower, config) {
         has_feedback: false,
         keep_history: false,
       },
-      {
-        // Camera image drawn from the map (publishCameraImage / onGetImage).
-        name: name(FEATURE.MAP),
-        external_id: ids.feature(FEATURE.MAP),
-        category: DEVICE_FEATURE_CATEGORIES.CAMERA,
-        type: DEVICE_FEATURE_TYPES.CAMERA.IMAGE,
-        min: 0,
-        max: 0,
-        read_only: true,
-        has_feedback: false,
-        keep_history: false,
-      },
       ...zoneSwitches(mower).map((zone) => ({
         name: zoneName(zone, config.language),
         external_id: ids.feature(zoneFeatureKey(zone)),
@@ -303,6 +292,40 @@ export function buildMowerDevice(gladys, mower, config) {
           supported_options: [],
         };
       }),
+    ],
+  };
+}
+
+// The map is a device of its own ("Luba-… – Map"), with the camera image as
+// its only feature. On the mower device (1.1.0 and 1.1.1) the Camera widget
+// took every new value of the mower (battery, status…) for the image: the
+// map vanished at each one, until the next image.
+export const MAP_DEVICE_TYPE = 'mower-map';
+
+export function mapIds(gladys, mower) {
+  return gladys.externalIds(MAP_DEVICE_TYPE, mower.iotId);
+}
+
+/** Discovery payload of the map of one mower (camera image: see map/render.js). */
+export function buildMapDevice(gladys, mower, config) {
+  const ids = mapIds(gladys, mower);
+  const name = FEATURE_NAMES[FEATURE.MAP][config.language] ?? FEATURE_NAMES[FEATURE.MAP].en;
+  return {
+    name: `${mower.name} – ${name}`,
+    external_id: ids.device,
+    features: [
+      {
+        // Camera image drawn from the map (publishCameraImage / onGetImage).
+        name,
+        external_id: ids.feature(FEATURE.MAP),
+        category: DEVICE_FEATURE_CATEGORIES.CAMERA,
+        type: DEVICE_FEATURE_TYPES.CAMERA.IMAGE,
+        min: 0,
+        max: 0,
+        read_only: true,
+        has_feedback: false,
+        keep_history: false,
+      },
     ],
   };
 }
@@ -394,7 +417,7 @@ export function buildMowerStates(gladys, mower, status, config) {
  * @param {string} featureKey one of FEATURE.MOWING / FEATURE.DOCK / FEATURE.REFRESH
  * @param {number} value 0 or 1
  * @param {number|null} workMode last known work mode
- * @returns {'startJob'|'resume'|'pause'|'dock'|'stopAndDock'|'cancelDock'|'refresh'|null} null: nothing to do
+ * @returns {'startJob'|'resume'|'pause'|'dock'|'stop'|'stopAndDock'|'cancelDock'|'refresh'|null} null: nothing to do
  */
 export function commandFor(featureKey, value, workMode) {
   const on = Number(value) === 1;
@@ -415,7 +438,9 @@ export function commandFor(featureKey, value, workMode) {
     if (!on) return 'cancelDock';
     // A bare "dock" on a paused job brings the mower home but leaves the job
     // paused, in Gladys and in the app ("Stop" had to be pressed in the app):
-    // the job is ended first, as the app does.
+    // the job is ended first, as the app does. Already home with the job
+    // paused: only the job is ended.
+    if (workMode === WORK_MODES.CHARGING_PAUSE) return 'stop';
     return workMode === WORK_MODES.PAUSE ? 'stopAndDock' : 'dock';
   }
   if (featureKey === FEATURE.REFRESH) {

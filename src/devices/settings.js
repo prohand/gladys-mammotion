@@ -232,7 +232,8 @@ export function selectedZoneSlugs(value) {
 }
 
 /**
- * The user switched a zone ON or OFF: add it to, or remove it from, the zones
+ * The user switched a zone ON or OFF: add it to (at the end: the zones are
+ * mowed in the order they were switched ON), or remove it from, the zones
  * of the next job of this mower. No zone left means every zone.
  * @returns {string} the new zone setting value
  */
@@ -250,15 +251,21 @@ export function setZone(mower, slug, on, config) {
 
 /**
  * Zone setting value from the zone switches Gladys keeps, or undefined when
- * the mower has no zone switch yet.
- * @param {Array<{ key: string, value: unknown }>} switches feature key + last_value
+ * the mower has no zone switch yet. The zones are in the order they were
+ * switched ON (time of the last change), so the next job keeps that order.
+ * @param {Array<{ key: string, value: unknown, changed?: string|Date }>} switches
+ *   feature key + last_value + last_value_changed
  */
 export function zonesFromSwitches(switches) {
   const zones = switches.filter((s) => zoneSlugOf(s.key) !== null);
   if (zones.length === 0) {
     return undefined;
   }
-  const on = zones.filter((s) => Number(s.value) === 1).map((s) => zoneSlugOf(s.key));
+  const time = (s) => new Date(s.changed ?? 0).getTime() || 0;
+  const on = zones
+    .filter((s) => Number(s.value) === 1)
+    .sort((a, b) => time(a) - time(b))
+    .map((s) => zoneSlugOf(s.key));
   return on.length > 0 ? on.join(',') : ALL_ZONES;
 }
 

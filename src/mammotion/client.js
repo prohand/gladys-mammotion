@@ -798,7 +798,8 @@ export function canPlanJobs(mower) {
 
 /**
  * Zones to mow: those chosen (names or zone keys, case and accents do not
- * matter), or all of them.
+ * matter), in the order they were chosen (the mower mows them in that order,
+ * as in the app), or all of them.
  */
 export function selectZones(zones, settings) {
   const wanted = mowingZoneNames(settings);
@@ -806,8 +807,8 @@ export function selectZones(zones, settings) {
     return zones;
   }
   // Names typed in the configuration or keys of the zone switches.
-  const keys = new Set(wanted.map(zoneSlug));
-  const selected = zones.filter((z) => keys.has(zoneSlug(z.name)));
+  const keys = [...new Set(wanted.map(zoneSlug))];
+  const selected = keys.flatMap((key) => zones.filter((z) => zoneSlug(z.name) === key));
   if (selected.length === 0) {
     throw new Error(
       `None of the zones "${settings.mowing_zones}" is on the map ` +

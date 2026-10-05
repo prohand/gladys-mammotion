@@ -618,6 +618,19 @@ test('selectZones refuses names that are not on the map', () => {
   assert.throws(() => selectZones(zones, normalizeConfig({ mowing_zones: 'Potager' })), /Avant/);
 });
 
+test('selectZones keeps the order in which the zones were chosen', () => {
+  const zones = [
+    { hash: 1n, name: 'Derrière' },
+    { hash: 2n, name: 'Bas' },
+    { hash: 3n, name: 'Devant' },
+  ];
+  const picked = selectZones(zones, normalizeConfig({ mowing_zones: 'devant,derriere,devant' }));
+  assert.deepEqual(
+    picked.map((z) => z.name),
+    ['Devant', 'Derrière'],
+  );
+});
+
 test('startJob is refused for the mowers of the Aliyun gateway', async () => {
   const client = new MammotionClient({ email: 'me@example.com', password: 'pw' });
   await assert.rejects(

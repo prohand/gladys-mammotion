@@ -19,13 +19,20 @@ import { hasCredentials, normalizeConfig } from './src/config.js';
 import {
   buildDiscoveredDevices,
   findMowerByDevice,
+  findMowerByMap,
   findMowerFeature,
   getMowers,
   lastKnownWorkMode,
   rememberWorkMode,
   setMowers,
 } from './src/devices/index.js';
-import { buildMowerStates, buildSettingStates, commandFor, mowerIds } from './src/devices/mower.js';
+import {
+  buildMowerStates,
+  buildSettingStates,
+  commandFor,
+  mapIds,
+  mowerIds,
+} from './src/devices/mower.js';
 import {
   applyConfigChanges,
   getSetting,
@@ -44,6 +51,7 @@ import {
 } from './src/devices/settings.js';
 import { canPlanJobs, isAuthError, MammotionClient } from './src/mammotion/client.js';
 import { modelLimits } from './src/mammotion/models.js';
+import { WORK_MODES } from './src/mammotion/telemetry.js';
 import { zoneSlug } from './src/config.js';
 import { renderMap, toCameraImage } from './src/map/render.js';
 
@@ -60,6 +68,10 @@ const INIT_RETRY_MS = 5 * 60_000;
 const POLL_MARGIN_MS = 5_000;
 // Gladys takes at most 12 camera images a minute per device.
 const MAP_IMAGE_INTERVAL_MS = 5_000;
+// Gladys no longer serves a camera image older than one hour (the widget
+// shows "no image"): the map is sent again before, even if nothing moved.
+const MAP_IMAGE_MAX_AGE_MS = 45 * 60_000;
+const MAP_KEEPALIVE_CHECK_MS = 5 * 60_000;
 
 // Current configuration (hot-reloaded via onConfigUpdated).
 let config = normalizeConfig();
@@ -122,7 +134,11 @@ function storedSetting(mower, key) {
     const zones = zonesFromSwitches(
       features
         .filter((f) => f.external_id?.startsWith(prefix))
-        .map((f) => ({ key: f.external_id.slice(prefix.length), value: f.last_value })),
+        .map((f) => ({
+          key: f.external_id.slice(prefix.length),
+          value: f.last_value,
+          changed: f.last_value_changed,
+        })),
     );
     if (zones !== undefined) {
       return zones;
@@ -212,7 +228,8 @@ async function publishMap(mower, { force = false } = {}) {
   }
   const last = lastMapImage.get(mower.iotId);
   const view = mapView(mower);
-  if (!force && last?.key === view.key) {
+  const tooOld = Date.now() - (last?.at ?? 0) > MAP_IMAGE_MAX_AGE_MS;
+  if (!force && !tooOld && last?.key === view.key) {
     return;
   }
   const wait = (last?.at ?? 0) + MAP_IMAGE_INTERVAL_MS - Date.now();
@@ -229,8 +246,19 @@ async function publishMap(mower, { force = false } = {}) {
     return;
   }
   lastMapImage.set(mower.iotId, { at: Date.now(), key: view.key });
-  await gladys.publishCameraImage(mowerIds(gladys, mower).device, mapImage(view));
+  await gladys.publishCameraImage(mapIds(gladys, mower).device, mapImage(view));
 }
+
+// Keep the map images fresh for Gladys (MAP_IMAGE_MAX_AGE_MS), whatever the
+// poll frequency.
+const mapKeepAlive = setInterval(() => {
+  for (const mower of getMowers()) {
+    publishMap(mower).catch((err) =>
+      logger.debug(`${mower.name}: map not published: ${err.message}`),
+    );
+  }
+}, MAP_KEEPALIVE_CHECK_MS);
+mapKeepAlive.unref?.();
 
 // A blade height above the family range means a high cut ("H") model: its
 // setting lists change (see models.js).
@@ -425,8 +453,10 @@ gladys.onSetValue(async (device, feature, value) => {
     await gladys.publishState(feature.external_id, on ? 0 : 1).catch(() => {});
     throw err;
   }
+  logger.info(
+    `${mower.name}: ${key} = ${value} -> ${command ?? 'nothing to do'} (work mode ${lastKnownWorkMode(mower)})`,
+  );
   if (!command) {
-    logger.info(`${mower.name}: nothing to do for ${key} = ${value}`);
     await gladys.publishState(feature.external_id, on);
     return;
   }
@@ -462,6 +492,11 @@ gladys.onSetValue(async (device, feature, value) => {
     return;
   }
   await getClient().sendCommand(mower, command);
+  if (command === 'pause') {
+    // "Return to dock" right after must end the job (stopAndDock): do not
+    // wait for the mower to report its pause.
+    rememberWorkMode(mower, WORK_MODES.PAUSE);
+  }
   // The mower accepted the order: reflect it now, the refresh confirms it.
   await gladys.publishState(feature.external_id, on);
   scheduleRefresh(mower);
@@ -472,6 +507,14 @@ async function onDeviceSaved(device) {
   const mower = findMowerByDevice(gladys, device);
   if (mower) {
     await publishSettings([mower]);
+    return;
+  }
+  // A map just created: show it now, not at the next move of the mower.
+  const mapOf = findMowerByMap(gladys, device);
+  if (mapOf) {
+    await publishMap(mapOf, { force: true }).catch((err) =>
+      logger.warn(`${mapOf.name}: map not published: ${err.message}`),
+    );
   }
 }
 gladys.onDeviceCreated(onDeviceSaved);
@@ -479,7 +522,7 @@ gladys.onDeviceUpdated(onDeviceSaved);
 
 // --- Map: Gladys asks for a fresh image (dashboard camera widget, chat) ------
 gladys.onGetImage(async (device) => {
-  const mower = findMowerByDevice(gladys, device);
+  const mower = findMowerByMap(gladys, device) ?? findMowerByDevice(gladys, device);
   if (!mower) {
     throw new Error(`Unknown mower ${device.external_id}`);
   }
@@ -544,6 +587,7 @@ gladys.on('connected', async () => {
 gladys.handleShutdown((signal) => {
   logger.info(`Received ${signal} -> graceful shutdown`);
   clearTimeout(initRetryTimer);
+  clearInterval(mapKeepAlive);
   for (const timer of refreshTimers) {
     clearTimeout(timer);
   }
