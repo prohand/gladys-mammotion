@@ -30,6 +30,7 @@ import {
   buildMowerStates,
   buildSettingStates,
   commandFor,
+  FEATURE,
   mapIds,
   mowerIds,
 } from './src/devices/mower.js';
@@ -417,7 +418,7 @@ gladys.onPoll(async (device) => {
   }
 });
 
-// --- Command: the user acts on the Mowing / Return to dock switches ---------
+// --- Command: the user acts on the Mowing / Return to dock / Stop features ---
 // A refused or useless order sends nothing to the mower: every message to it
 // (sync, report request) disturbs the Mammotion app.
 gladys.onSetValue(async (device, feature, value) => {
@@ -457,7 +458,8 @@ gladys.onSetValue(async (device, feature, value) => {
     `${mower.name}: ${key} = ${value} -> ${command ?? 'nothing to do'} (work mode ${lastKnownWorkMode(mower)})`,
   );
   if (!command) {
-    await gladys.publishState(feature.external_id, on);
+    // A push button (Stop job) has no state to put back.
+    if (key !== FEATURE.STOP) await gladys.publishState(feature.external_id, on);
     return;
   }
   if (command === 'refresh') {
@@ -479,22 +481,17 @@ gladys.onSetValue(async (device, feature, value) => {
       });
     return;
   }
-  if (command === 'stopAndDock') {
-    // Two orders with a gap: longer than the 5 s Gladys waits for an answer.
-    await gladys.publishState(feature.external_id, 1);
-    getClient()
-      .sendCommands(mower, ['stop', 'dock'])
-      .then(() => scheduleRefresh(mower))
-      .catch(async (err) => {
-        logger.warn(`${mower.name}: return to dock failed: ${err.message}`);
-        await gladys.publishState(feature.external_id, 0).catch(() => {});
-      });
+  await getClient().sendCommand(mower, command);
+  if (command === 'stop') {
+    // A push button: no state to publish. The job is over: "Mowing" starts a
+    // new one, even before the mower reports it.
+    rememberWorkMode(mower, WORK_MODES.READY);
+    scheduleRefresh(mower);
     return;
   }
-  await getClient().sendCommand(mower, command);
   if (command === 'pause') {
-    // "Return to dock" right after must end the job (stopAndDock): do not
-    // wait for the mower to report its pause.
+    // "Mowing" or "Stop job" right after must see the pause: do not wait for
+    // the mower to report it.
     rememberWorkMode(mower, WORK_MODES.PAUSE);
   }
   // The mower accepted the order: reflect it now, the refresh confirms it.

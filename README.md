@@ -13,6 +13,7 @@ Chaque tondeuse du compte Mammotion devient un appareil Gladys avec :
 | ----------------- | --------------------------- | ------------------------------------------------------------------------ |
 | Tonte             | interrupteur (commande)     | `1` = lancer une tonte ou reprendre, `0` = pause                         |
 | Retour à la base  | interrupteur (commande)     | `1` = retour à la base, `0` = annuler le retour (¹)                      |
+| Arrêter la tâche  | bouton poussoir             | termine la tonte, la tondeuse reste sur place (¹)                        |
 | Rafraîchir        | bouton poussoir             | demande son état à la tondeuse                                           |
 | État              | texte                       | « En tonte », « En charge », « En pause », « Hors ligne »…               |
 | Batterie          | batterie (%)                | niveau de charge                                                         |
@@ -63,9 +64,10 @@ zigzag adaptatif (`channelMode` 2) sont à confirmer sur la tondeuse : chaque
 trajet vu sur le broker, même lancé depuis l'application, est écrit dans les
 logs (« route settings seen »).
 
-(¹) Sur une tonte en cours ou en pause, « stop » (`NavTaskCtrl` action 4) part avant
-« dock » (action 5) : un simple « dock » ramène la tondeuse mais laisse la
-tâche en pause, dans Gladys comme dans l'application.
+(¹) Comme les boutons de l'application : « Retour à la base » = « Recharge »
+(`NavTaskCtrl` action 5), la tâche reste en pause et « Tonte » la reprend ;
+« Arrêter la tâche » = « Stop » (action 4), la tâche est terminée et la
+tondeuse reste sur place.
 
 Les valeurs sont lues sur le cloud Mammotion toutes les **`poll_frequency`**
 secondes (réglable dans l'écran de configuration, 300 s par défaut, de 30 à
