@@ -436,12 +436,12 @@ export function commandFor(featureKey, value, workMode) {
   }
   if (featureKey === FEATURE.DOCK) {
     if (!on) return 'cancelDock';
-    // A bare "dock" on a paused job brings the mower home but leaves the job
-    // paused, in Gladys and in the app ("Stop" had to be pressed in the app):
-    // the job is ended first, as the app does. Already home with the job
-    // paused: only the job is ended.
+    // A bare "dock" on a job (mowing or paused) brings the mower home but
+    // leaves the job paused, in Gladys and in the app ("Stop" had to be
+    // pressed in the app): the job is ended first, as the app does. Already
+    // home with the job paused: only the job is ended.
     if (workMode === WORK_MODES.CHARGING_PAUSE) return 'stop';
-    return workMode === WORK_MODES.PAUSE ? 'stopAndDock' : 'dock';
+    return workMode === WORK_MODES.PAUSE || isMowing(workMode) ? 'stopAndDock' : 'dock';
   }
   if (featureKey === FEATURE.REFRESH) {
     return 'refresh';
