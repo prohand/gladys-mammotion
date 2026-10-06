@@ -4,7 +4,8 @@
 // Gladys has no dedicated "lawn mower" category, so the mower is built from
 // standard features every dashboard already knows how to render:
 //   - Mowing          switch  (1 = start a job or resume a paused one, 0 = pause)
-//   - Return to dock  switch  (1 = go home, ending a paused job; 0 = cancel the return)
+//   - Return to dock  switch  (1 = go home to charge, a job stays paused; 0 = cancel the return)
+//   - Stop job        push button (ends the job, the mower stays where it is)
 //   - Refresh         push button (asks the mower for its state now)
 //   - Status          text    (Mowing (45 %), Charging, Paused…)
 //   - Battery         battery %  + Charging binary (see below)
@@ -88,6 +89,7 @@ export const FEATURE = {
   WORK_TIME: 'work-time',
   DISTANCE: 'distance',
   REFRESH: 'refresh',
+  STOP: 'stop',
 };
 
 // Work modes from which a new job can start (Mammotion-HA async_start_mowing).
@@ -109,6 +111,7 @@ const FEATURE_NAMES = {
   [FEATURE.WORK_TIME]: { en: 'Total mowing time', fr: 'Temps de tonte total' },
   [FEATURE.DISTANCE]: { en: 'Total distance', fr: 'Distance totale' },
   [FEATURE.REFRESH]: { en: 'Refresh', fr: 'Rafraîchir' },
+  [FEATURE.STOP]: { en: 'Stop job', fr: 'Arrêter la tâche' },
 };
 
 export function mowerIds(gladys, mower) {
@@ -233,6 +236,18 @@ export function buildMowerDevice(gladys, mower, config) {
         DEVICE_FEATURE_TYPES.SENSOR.DECIMAL,
         { unit: DEVICE_FEATURE_UNITS.KM, min: 0, max: 100000 },
       ),
+      {
+        // "Stop" of the app: ends the job, the mower stays where it is.
+        name: name(FEATURE.STOP),
+        external_id: ids.feature(FEATURE.STOP),
+        category: DEVICE_FEATURE_CATEGORIES.BUTTON,
+        type: DEVICE_FEATURE_TYPES.BUTTON.PUSH,
+        min: 0,
+        max: 1,
+        read_only: false,
+        has_feedback: false,
+        keep_history: false,
+      },
       {
         // Shown as a "Push" button on the dashboard.
         name: name(FEATURE.REFRESH),
@@ -414,10 +429,14 @@ export function buildMowerStates(gladys, mower, status, config) {
  *
  * "Mowing" ON resumes a paused job, or starts a new one when the mower is
  * ready ('startJob': a route is planned first, see MammotionClient.startJob).
- * @param {string} featureKey one of FEATURE.MOWING / FEATURE.DOCK / FEATURE.REFRESH
+ * "Return to dock" and "Stop job" work as the buttons of the app:
+ * - "Recharge": the mower goes home, the job stays paused (resumed by "Mowing");
+ * - "Stop": the job ends, the mower stays where it is ("Return to dock" then
+ *   brings it home).
+ * @param {string} featureKey one of FEATURE.MOWING / FEATURE.DOCK / FEATURE.STOP / FEATURE.REFRESH
  * @param {number} value 0 or 1
  * @param {number|null} workMode last known work mode
- * @returns {'startJob'|'resume'|'pause'|'dock'|'stop'|'stopAndDock'|'cancelDock'|'refresh'|null} null: nothing to do
+ * @returns {'startJob'|'resume'|'pause'|'dock'|'stop'|'cancelDock'|'refresh'|null} null: nothing to do
  */
 export function commandFor(featureKey, value, workMode) {
   const on = Number(value) === 1;
@@ -436,12 +455,13 @@ export function commandFor(featureKey, value, workMode) {
   }
   if (featureKey === FEATURE.DOCK) {
     if (!on) return 'cancelDock';
-    // A bare "dock" on a job (mowing or paused) brings the mower home but
-    // leaves the job paused, in Gladys and in the app ("Stop" had to be
-    // pressed in the app): the job is ended first, as the app does. Already
-    // home with the job paused: only the job is ended.
-    if (workMode === WORK_MODES.CHARGING_PAUSE) return 'stop';
-    return workMode === WORK_MODES.PAUSE || isMowing(workMode) ? 'stopAndDock' : 'dock';
+    // "Recharge" of the app: the job is kept, paused (1.1.2 and 1.1.3 ended
+    // it first, the app does not). Already charging: nothing to do.
+    return isCharging(workMode) ? null : 'dock';
+  }
+  if (featureKey === FEATURE.STOP) {
+    // Only a job can be stopped (mowing, paused, or paused on the dock).
+    return isMowing(workMode) || isPaused(workMode) || workMode === null ? 'stop' : null;
   }
   if (featureKey === FEATURE.REFRESH) {
     return 'refresh';

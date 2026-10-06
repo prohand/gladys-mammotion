@@ -9,9 +9,11 @@ follow its battery, status and mowing progress.
 Each mower of your Mammotion account shows up with:
 
 - **Mowing** (switch): on = start a job (or resume the paused one), off = pause;
-- **Return to dock** (switch): on = go back to the dock, off = cancel. On a
-  job in progress or paused, the job is ended first (like "Stop" in the app), or it would
-  stay paused;
+- **Return to dock** (switch): on = go back to the dock to charge, off =
+  cancel. Like "Recharge" in the app: a job in progress stays paused,
+  **Mowing** resumes it later;
+- **Stop job** (button): ends the job, the mower stays where it is (like
+  "Stop" in the app). **Return to dock** then brings it home;
 - **Refresh** (button): asks the mower for its state right now;
 - **Status**: Mowing (45 %), Charging, Paused, Returning to dock, Offline…;
 - **Battery** (%) and **Charging**;

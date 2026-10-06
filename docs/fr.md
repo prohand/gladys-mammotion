@@ -10,9 +10,12 @@ Chaque tondeuse de votre compte Mammotion apparaît avec :
 
 - **Tonte** (interrupteur) : allumé = lancer une tonte (ou reprendre celle en
   pause), éteint = pause ;
-- **Retour à la base** (interrupteur) : allumé = retour à la base, éteint =
-  annuler. Sur une tonte en cours ou en pause, la tonte est d'abord arrêtée (comme
-  « Arrêter » dans l'application), sinon elle resterait en pause ;
+- **Retour à la base** (interrupteur) : allumé = retour à la base pour
+  recharger, éteint = annuler. Comme « Recharge » dans l'application : une
+  tonte en cours reste en pause, **Tonte** la reprend ensuite ;
+- **Arrêter la tâche** (bouton) : termine la tonte, la tondeuse reste sur
+  place (comme « Stop » dans l'application). **Retour à la base** la ramène
+  ensuite ;
 - **Rafraîchir** (bouton) : demande tout de suite son état à la tondeuse ;
 - **État** : En tonte (45 %), En charge, En pause, Retour à la base, Hors ligne… ;
 - **Batterie** (%) et **En charge** ;

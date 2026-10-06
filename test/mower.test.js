@@ -45,7 +45,7 @@ test('the mower device uses a poll_frequency accepted by Gladys (ms)', () => {
   assert.equal(device.external_id, 'mower:iot-luba-1');
 });
 
-test('only the switches, the refresh button and the settings are controllable', () => {
+test('only the switches, the buttons and the settings are controllable', () => {
   rememberZones(luba, ['Devant', 'Côté Sud']);
   const device = buildMowerDevice(gladys, luba, config);
   const writable = device.features
@@ -57,6 +57,7 @@ test('only the switches, the refresh button and the settings are controllable', 
     'mower:iot-luba-1:refresh',
     'mower:iot-luba-1:setting-mowing-angle',
     'mower:iot-luba-1:setting-start-progress',
+    'mower:iot-luba-1:stop',
     'mower:iot-luba-1:zone-cote-sud',
     'mower:iot-luba-1:zone-devant',
   ]);
@@ -67,9 +68,11 @@ test('only the switches, the refresh button and the settings are controllable', 
     assert.equal(feature(device, key).category, DEVICE_FEATURE_CATEGORIES.SWITCH);
     assert.equal(feature(device, key).type, DEVICE_FEATURE_TYPES.SWITCH.BINARY);
   }
-  // A push button on the dashboard.
-  assert.equal(feature(device, FEATURE.REFRESH).category, DEVICE_FEATURE_CATEGORIES.BUTTON);
-  assert.equal(feature(device, FEATURE.REFRESH).type, DEVICE_FEATURE_TYPES.BUTTON.PUSH);
+  // Push buttons on the dashboard.
+  for (const key of [FEATURE.REFRESH, FEATURE.STOP]) {
+    assert.equal(feature(device, key).category, DEVICE_FEATURE_CATEGORIES.BUTTON);
+    assert.equal(feature(device, key).type, DEVICE_FEATURE_TYPES.BUTTON.PUSH);
+  }
 });
 
 test('the map is a device of its own, with the camera image as its only feature', () => {
@@ -242,14 +245,18 @@ test('commandFor maps the switches to mower commands', () => {
   assert.equal(commandFor(FEATURE.MOWING, 0, WORK_MODES.WORKING), 'pause');
   assert.equal(commandFor(FEATURE.MOWING, 0, null), 'pause');
   assert.equal(commandFor(FEATURE.MOWING, 0, WORK_MODES.CHARGING), null);
-  // A job, mowing or paused, is ended before going home, or it stays paused
-  // in the app.
-  assert.equal(commandFor(FEATURE.DOCK, 1, WORK_MODES.WORKING), 'stopAndDock');
-  assert.equal(commandFor(FEATURE.DOCK, 1, WORK_MODES.MANUAL_MOWING), 'stopAndDock');
-  assert.equal(commandFor(FEATURE.DOCK, 1, WORK_MODES.PAUSE), 'stopAndDock');
+  // "Return to dock" is the "Recharge" of the app: the job stays paused.
+  assert.equal(commandFor(FEATURE.DOCK, 1, WORK_MODES.WORKING), 'dock');
+  assert.equal(commandFor(FEATURE.DOCK, 1, WORK_MODES.PAUSE), 'dock');
   assert.equal(commandFor(FEATURE.DOCK, 1, WORK_MODES.READY), 'dock');
-  // Already home with the job paused: only the job is ended.
-  assert.equal(commandFor(FEATURE.DOCK, 1, WORK_MODES.CHARGING_PAUSE), 'stop');
+  assert.equal(commandFor(FEATURE.DOCK, 1, WORK_MODES.CHARGING_PAUSE), null);
+  assert.equal(commandFor(FEATURE.DOCK, 1, WORK_MODES.CHARGING), null);
+  // "Stop job" is the "Stop" of the app: ends the job, the mower stays put.
+  assert.equal(commandFor(FEATURE.STOP, 1, WORK_MODES.PAUSE), 'stop');
+  assert.equal(commandFor(FEATURE.STOP, 1, WORK_MODES.CHARGING_PAUSE), 'stop');
+  assert.equal(commandFor(FEATURE.STOP, 1, WORK_MODES.WORKING), 'stop');
+  assert.equal(commandFor(FEATURE.STOP, 1, WORK_MODES.CHARGING), null);
+  assert.equal(commandFor(FEATURE.STOP, 1, WORK_MODES.READY), null);
   assert.equal(commandFor(FEATURE.DOCK, 0, WORK_MODES.RETURNING), 'cancelDock');
   assert.equal(commandFor(FEATURE.REFRESH, 1, null), 'refresh');
   assert.throws(() => commandFor(FEATURE.BATTERY, 1, null));
@@ -282,4 +289,6 @@ test('feature names follow the configured language', () => {
   assert.equal(feature(fr, FEATURE.MOWING).name, 'Tonte');
   assert.equal(feature(en, FEATURE.MOWING).name, 'Mowing');
   assert.equal(feature(fr, FEATURE.DOCK).name, 'Retour à la base');
+  assert.equal(feature(fr, FEATURE.STOP).name, 'Arrêter la tâche');
+  assert.equal(feature(en, FEATURE.STOP).name, 'Stop job');
 });
