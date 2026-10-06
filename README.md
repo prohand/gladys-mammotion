@@ -63,7 +63,7 @@ zigzag adaptatif (`channelMode` 2) sont à confirmer sur la tondeuse : chaque
 trajet vu sur le broker, même lancé depuis l'application, est écrit dans les
 logs (« route settings seen »).
 
-(¹) Sur une tonte en pause, « stop » (`NavTaskCtrl` action 4) part avant
+(¹) Sur une tonte en cours ou en pause, « stop » (`NavTaskCtrl` action 4) part avant
 « dock » (action 5) : un simple « dock » ramène la tondeuse mais laisse la
 tâche en pause, dans Gladys comme dans l'application.
 
