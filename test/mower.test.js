@@ -37,6 +37,8 @@ const feature = (device, key) => device.features.find((f) => f.external_id.endsW
 test('the mower device uses a poll_frequency accepted by Gladys (ms)', () => {
   const device = buildMowerDevice(gladys, luba, config);
   assert.equal(device.poll_frequency, 60_000);
+  // Without should_poll the core never schedules the device.
+  assert.equal(device.should_poll, true);
   assert.equal(
     buildMowerDevice(gladys, luba, normalizeConfig({ poll_frequency: 30 })).poll_frequency,
     30_000,

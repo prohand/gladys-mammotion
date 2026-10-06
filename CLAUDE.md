@@ -62,7 +62,9 @@ src/map/render.js, font.js  map rendering to JPEG for the camera device
   app keeps its own settings on the phone; the mower cannot give them back.
 - **Polling**: Gladys `poll_frequency` is an enum in ms (1 s–60 s, any other value rejects the
   whole discovery); `devicePollFrequency()` picks the tick and `onPoll` skips calls inside the
-  configured interval. Gladys only polls a device that also carries `should_poll: true`.
+  configured interval. Devices carry `should_poll: true` (without it Gladys never polls them;
+  the flag is read at creation only), and index.js runs its own one-minute loop over the
+  created mowers; both paths go through `pollMowerIfDue()`.
 - **No fake values**: the 0 % battery a mower reports while asleep is not published (it fired
   false low-battery alerts).
 - **The map is a camera image** refreshed by a keep-alive timer so Gladys never shows it stale.

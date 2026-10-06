@@ -401,8 +401,13 @@ gladys.onPoll(async (device) => {
     logger.debug(`onPoll ignored (unknown mower) for ${device.external_id}`);
     return;
   }
-  // Gladys polls at most every 60 s: skip the calls that come before the
-  // interval chosen by the user (up to 3600 s).
+  await pollMowerIfDue(mower);
+});
+
+// Read a mower unless it was read less than `poll_frequency` ago. Gladys polls
+// at most every 60 s, and two paths ask (onPoll and the loop below): both go
+// through here, so a mower is read once per interval chosen by the user.
+async function pollMowerIfDue(mower) {
   const elapsed = Date.now() - (lastPollAt.get(mower.iotId) ?? 0);
   if (elapsed < config.poll_frequency * 1000 - POLL_MARGIN_MS) {
     return;
@@ -416,7 +421,30 @@ gladys.onPoll(async (device) => {
     }
     throw err;
   }
-});
+}
+
+// The integration's own refresh loop. Gladys only polls a device whose row
+// carries `should_poll: true`, a flag it reads once at creation: every mower
+// added before the flag was published would never be polled again.
+const OWN_POLL_LOOP_MS = 60_000;
+let ownPollRunning = false;
+const ownPollLoop = setInterval(async () => {
+  if (ownPollRunning || !hasCredentials(config)) {
+    return;
+  }
+  ownPollRunning = true;
+  try {
+    const created = new Set((gladys.devices ?? []).map((device) => device.external_id));
+    for (const mower of getMowers()) {
+      if (created.has(mowerIds(gladys, mower).device)) {
+        await pollMowerIfDue(mower).catch(() => {});
+      }
+    }
+  } finally {
+    ownPollRunning = false;
+  }
+}, OWN_POLL_LOOP_MS);
+ownPollLoop.unref?.();
 
 // --- Command: the user acts on the Mowing / Return to dock / Stop features ---
 // A refused or useless order sends nothing to the mower: every message to it
@@ -585,6 +613,7 @@ gladys.handleShutdown((signal) => {
   logger.info(`Received ${signal} -> graceful shutdown`);
   clearTimeout(initRetryTimer);
   clearInterval(mapKeepAlive);
+  clearInterval(ownPollLoop);
   for (const timer of refreshTimers) {
     clearTimeout(timer);
   }

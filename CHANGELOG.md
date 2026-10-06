@@ -17,6 +17,11 @@ All notable changes to this integration are documented here. The format follows
 - Development dependencies updated to their latest versions (ESLint 10.12, Prettier 3.9.9, globals 17.13).
 - mqtt updated to 5.16.
 
+### Fixed
+
+- Mowers are read on schedule again: devices are published with `should_poll: true`, without which Gladys never polls them, and an integration-owned loop reads the mowers created before that flag. A mower bound on Aliyun (no push) kept its battery, status and progress from startup or from the last command.
+- The Release workflow re-runs Prettier on the manifest after `jq`, so a release no longer leaves `main` with a failing CI format check.
+
 ## [1.1.4] - 2026-10-06
 
 ### Fixed
