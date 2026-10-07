@@ -6,6 +6,10 @@ All notable changes to this integration are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-10-07
+
+- Maintenance release, no functional change.
+
 ## [1.2.0] - 2026-10-06
 
 ### Added
@@ -141,7 +145,8 @@ First public release.
 
 - Register Build and Release workflows on main
 
-[Unreleased]: https://github.com/prohand/gladys-mammotion/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/prohand/gladys-mammotion/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/prohand/gladys-mammotion/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/prohand/gladys-mammotion/compare/v1.1.4...v1.2.0
 [1.1.4]: https://github.com/prohand/gladys-mammotion/compare/v1.1.3...v1.1.4
 [1.1.3]: https://github.com/prohand/gladys-mammotion/compare/v1.1.2...v1.1.3
