@@ -96,6 +96,11 @@ tourne en tâche de fond (Gladys n'attend que 5 s la réponse d'une commande).
 Deux boutons sont aussi disponibles dans l'écran de configuration :
 **Tester la connexion** et **Rafraîchir les tondeuses**.
 
+Avec Gladys 5.1 : un widget **Tondeuse Mammotion**, quatre déclencheurs de
+scène (tonte commencée, tâche terminée, retour à la base, problème) et quatre
+actions de scène (lancer, mettre en pause, renvoyer à la base, lire l'état).
+Détails dans `docs/fr.md`.
+
 ## Configuration
 
 | Champ                              | Description                                           |

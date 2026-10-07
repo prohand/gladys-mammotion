@@ -98,6 +98,42 @@ une scène, sans fausse alerte.
 > l'application, et utilisez ce compte ici. Sinon l'application sur votre
 > téléphone peut être déconnectée quand Gladys se connecte.
 
+## Widget, déclencheurs et actions de scène (Gladys 5.1)
+
+### Widget « Tondeuse Mammotion »
+
+Dans **Tableau de bord → Modifier → Ajouter un widget**, choisissez
+**Tondeuse Mammotion**, puis la tondeuse. Le widget montre l'état, la batterie,
+l'avancement et le temps restant de la tâche, et propose les boutons utiles
+selon l'état : **Tondre** (ou **Reprendre**), **Pause**, **Rentrer**. Il affiche
+le dernier état reçu : ouvrir le tableau de bord n'envoie rien à la tondeuse.
+
+### Déclencheurs
+
+| Déclencheur                            | Quand                                                                          |
+| -------------------------------------- | ------------------------------------------------------------------------------ |
+| Une tondeuse commence à tondre         | Nouvelle tâche, ou reprise d'une tâche en pause                                |
+| Une tâche de tonte se termine          | Tâche terminée ou arrêtée (une recharge en cours de tâche n'en est pas la fin) |
+| Une tondeuse est de retour sur sa base | Elle commence à charger                                                        |
+| Une tondeuse a un problème             | Hors ligne, erreur de position, hors zone, verrouillée, mise à jour échouée    |
+
+Chacun se déclenche une fois, au changement, jamais au redémarrage de
+l'intégration. Variables : nom de la tondeuse, état, batterie, et selon le
+déclencheur l'avancement, « tâche en pause pour recharger » ou le problème.
+
+### Actions
+
+- **Lancer la tonte** : nouvelle tâche avec les zones et réglages choisis dans
+  Gladys, ou reprise d'une tâche en pause.
+- **Mettre la tonte en pause**.
+- **Renvoyer une tondeuse à sa base** (la tâche est gardée en pause).
+- **Lire une tondeuse** : état, en ligne, en tonte, batterie, avancement,
+  temps restant, problème. Cochez « Interroger la tondeuse d'abord » pour une
+  valeur fraîche.
+
+Les trois premières renvoient un **résultat** (`started`, `resumed`,
+`already_mowing`, `paused`, `not_mowing`, `returning`, `already_docked`).
+
 ## Exemples de scènes
 
 - Lancer une tonte chaque samedi à 10 h s'il ne pleut pas.
@@ -106,7 +142,9 @@ une scène, sans fausse alerte.
   (toutes les zones) puis allumer « Tonte ».
 - Reprendre la tonte en pause quand la pluie s'arrête.
 - Renvoyer la tondeuse à la base quand le capteur de pluie détecte de la pluie.
-- Recevoir un message quand l'état passe à « Erreur de position ».
+- Recevoir un message quand la tondeuse a un problème (déclencheur « Une tondeuse
+  a un problème »).
+- Recevoir un message quand la tâche de tonte se termine.
 
 ## Dépannage
 
