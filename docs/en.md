@@ -86,6 +86,41 @@ same yes/no value, same use in a scene, no false alert.
 > app, and use that account here. Otherwise the app on your phone may be
 > logged out when Gladys connects.
 
+## Widget, scene triggers and actions (Gladys 5.1)
+
+### "Mammotion mower" widget
+
+In **Dashboard → Edit → Add a widget**, choose **Mammotion mower**, then the
+mower. The widget shows the state, the battery, the progress and remaining time
+of the job, and the buttons that make sense now: **Start mowing** (or
+**Resume**), **Pause**, **Back to dock**. It shows the last state received:
+opening the dashboard sends nothing to the mower.
+
+### Triggers
+
+| Trigger                     | When                                                                    |
+| --------------------------- | ----------------------------------------------------------------------- |
+| A mower starts mowing       | A new job, or a paused one resumed                                      |
+| A mowing job ends           | Finished or stopped (a recharge in the middle of a job does not end it) |
+| A mower is back on its dock | It starts charging                                                      |
+| A mower has a problem       | Offline, location error, out of boundary, locked, failed update         |
+
+Each fires once, on the change, never when the integration restarts.
+Variables: mower name, state, battery, and depending on the trigger the
+progress, "job paused to recharge" or the problem.
+
+### Actions
+
+- **Start mowing**: a new job with the zones and settings chosen in Gladys, or
+  a paused job resumed.
+- **Pause mowing**.
+- **Send a mower back to its dock** (the job is kept paused).
+- **Read a mower**: state, online, mowing, battery, progress, remaining time,
+  problem. Tick "Ask the mower first" for a fresh value.
+
+The first three return a **result** (`started`, `resumed`, `already_mowing`,
+`paused`, `not_mowing`, `returning`, `already_docked`).
+
 ## Scene ideas
 
 - Start mowing every Saturday at 10 am if it does not rain.
@@ -94,7 +129,8 @@ same yes/no value, same use in a scene, no false alert.
   zone) then turn "Mowing" on.
 - Resume the paused job when the rain stops.
 - Send the mower back to its dock when the rain sensor detects rain.
-- Get a message when the status becomes "Location error".
+- Get a message when the mower has a problem ("A mower has a problem" trigger).
+- Get a message when the mowing job ends.
 
 ## Troubleshooting
 

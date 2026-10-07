@@ -48,6 +48,8 @@ src/devices/mower.js      discovery payload and states of a mower
 src/devices/settings.js   next-job settings as select features
 src/devices/index.js      device lookup helpers
 src/map/render.js, font.js  map rendering to JPEG for the camera device
+src/scenes.js             scene triggers (transitions) and scene action outputs (pure)
+src/widgets.js            dashboard widget `mower` (pure, built from the last status)
 ```
 
 ### Invariants worth knowing
@@ -70,6 +72,13 @@ src/map/render.js, font.js  map rendering to JPEG for the camera device
 - **The map is a camera image** refreshed by a keep-alive timer so Gladys never shows it stale.
 - **Every feature declares `min`/`max`** (NOT NULL in Gladys); text states go in the `text` field.
 - The account password and tokens are secrets: never log them.
+- **Gladys 5.1 capabilities** (`gladys_version >=5.1.0`): the widget and `get_mower_status`
+  answer from the last status in memory (`lastStatuses`), never from a message to the mower.
+  Scene triggers are transitions computed by `MowerEventTracker` on every status (poll or
+  push): the first status after a start only records, an unknown work mode moves nothing, and
+  a recharge in the middle of a job does not end it. The order actions and the widget buttons
+  go through `controlMower`, the same path as the device features. Widget, trigger, action,
+  field, variable, output and option keys are stored by users: never rename them.
 
 ### Manifest
 

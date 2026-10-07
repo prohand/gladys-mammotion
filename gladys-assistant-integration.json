@@ -8,7 +8,7 @@
   },
   "version": "1.2.0",
   "docker_image": "ghcr.io/prohand/gladys-mammotion:1.2.0",
-  "gladys_version": ">=4.86.0",
+  "gladys_version": ">=5.1.0",
   "cover_image": "https://raw.githubusercontent.com/prohand/gladys-mammotion/main/cover.png",
   "categories": [
     "appliances"
@@ -444,6 +444,539 @@
         "fr": "Rafraîchir les tondeuses"
       },
       "timeout_seconds": 60
+    }
+  ],
+  "widgets": [
+    {
+      "key": "mower",
+      "label": {
+        "en": "Mammotion mower",
+        "fr": "Tondeuse Mammotion"
+      },
+      "icon": "scissors",
+      "description": {
+        "en": "One mower: state, battery, job progress, and buttons to mow, pause or send it home.",
+        "fr": "Une tondeuse : état, batterie, avancement, et boutons pour tondre, mettre en pause ou rentrer."
+      },
+      "settings": [
+        {
+          "key": "mower",
+          "type": "select",
+          "source": "devices",
+          "label": {
+            "en": "Mower",
+            "fr": "Tondeuse"
+          },
+          "required": true
+        }
+      ],
+      "action_timeout_seconds": 30
+    }
+  ],
+  "scene_triggers": [
+    {
+      "key": "mowing_started",
+      "label": {
+        "en": "A mower starts mowing",
+        "fr": "Une tondeuse commence à tondre"
+      },
+      "description": {
+        "en": "A new job, or a paused one resumed (after a recharge, too).",
+        "fr": "Une nouvelle tâche, ou une tâche en pause qui reprend (après une recharge aussi)."
+      },
+      "fields": [
+        {
+          "key": "mower",
+          "type": "select",
+          "source": "devices",
+          "label": {
+            "en": "Mower",
+            "fr": "Tondeuse"
+          },
+          "description": {
+            "en": "Leave empty for any mower.",
+            "fr": "Laissez vide pour n'importe quelle tondeuse."
+          }
+        }
+      ],
+      "variables": [
+        {
+          "key": "mower_name",
+          "type": "string",
+          "label": {
+            "en": "Mower name",
+            "fr": "Nom de la tondeuse"
+          }
+        },
+        {
+          "key": "state",
+          "type": "string",
+          "label": {
+            "en": "State",
+            "fr": "État"
+          }
+        },
+        {
+          "key": "battery",
+          "type": "number",
+          "label": {
+            "en": "Battery (%)",
+            "fr": "Batterie (%)"
+          }
+        },
+        {
+          "key": "resumed",
+          "type": "boolean",
+          "label": {
+            "en": "Resumed",
+            "fr": "Reprise"
+          }
+        }
+      ]
+    },
+    {
+      "key": "job_ended",
+      "label": {
+        "en": "A mowing job ends",
+        "fr": "Une tâche de tonte se termine"
+      },
+      "description": {
+        "en": "Finished or stopped. A recharge in the middle of a job does not end it.",
+        "fr": "Terminée ou arrêtée. Une recharge au milieu d'une tâche ne la termine pas."
+      },
+      "fields": [
+        {
+          "key": "mower",
+          "type": "select",
+          "source": "devices",
+          "label": {
+            "en": "Mower",
+            "fr": "Tondeuse"
+          },
+          "description": {
+            "en": "Leave empty for any mower.",
+            "fr": "Laissez vide pour n'importe quelle tondeuse."
+          }
+        }
+      ],
+      "variables": [
+        {
+          "key": "mower_name",
+          "type": "string",
+          "label": {
+            "en": "Mower name",
+            "fr": "Nom de la tondeuse"
+          }
+        },
+        {
+          "key": "state",
+          "type": "string",
+          "label": {
+            "en": "State",
+            "fr": "État"
+          }
+        },
+        {
+          "key": "battery",
+          "type": "number",
+          "label": {
+            "en": "Battery (%)",
+            "fr": "Batterie (%)"
+          }
+        },
+        {
+          "key": "progress",
+          "type": "number",
+          "label": {
+            "en": "Progress (%)",
+            "fr": "Avancement (%)"
+          }
+        }
+      ]
+    },
+    {
+      "key": "docked",
+      "label": {
+        "en": "A mower is back on its dock",
+        "fr": "Une tondeuse est de retour sur sa base"
+      },
+      "description": {
+        "en": "It starts charging, job finished or paused to recharge.",
+        "fr": "Elle commence à charger, tâche terminée ou en pause pour recharger."
+      },
+      "fields": [
+        {
+          "key": "mower",
+          "type": "select",
+          "source": "devices",
+          "label": {
+            "en": "Mower",
+            "fr": "Tondeuse"
+          },
+          "description": {
+            "en": "Leave empty for any mower.",
+            "fr": "Laissez vide pour n'importe quelle tondeuse."
+          }
+        }
+      ],
+      "variables": [
+        {
+          "key": "mower_name",
+          "type": "string",
+          "label": {
+            "en": "Mower name",
+            "fr": "Nom de la tondeuse"
+          }
+        },
+        {
+          "key": "state",
+          "type": "string",
+          "label": {
+            "en": "State",
+            "fr": "État"
+          }
+        },
+        {
+          "key": "battery",
+          "type": "number",
+          "label": {
+            "en": "Battery (%)",
+            "fr": "Batterie (%)"
+          }
+        },
+        {
+          "key": "job_paused",
+          "type": "boolean",
+          "label": {
+            "en": "Job paused to recharge",
+            "fr": "Tâche en pause pour recharger"
+          }
+        }
+      ]
+    },
+    {
+      "key": "mower_problem",
+      "label": {
+        "en": "A mower has a problem",
+        "fr": "Une tondeuse a un problème"
+      },
+      "description": {
+        "en": "Offline, location error, out of its boundary, locked, or a failed update.",
+        "fr": "Hors ligne, erreur de position, hors zone, verrouillée, ou mise à jour échouée."
+      },
+      "fields": [
+        {
+          "key": "mower",
+          "type": "select",
+          "source": "devices",
+          "label": {
+            "en": "Mower",
+            "fr": "Tondeuse"
+          },
+          "description": {
+            "en": "Leave empty for any mower.",
+            "fr": "Laissez vide pour n'importe quelle tondeuse."
+          }
+        },
+        {
+          "key": "problem",
+          "type": "multi_select",
+          "label": {
+            "en": "Problem",
+            "fr": "Problème"
+          },
+          "description": {
+            "en": "Leave empty for any problem.",
+            "fr": "Laissez vide pour n'importe quel problème."
+          },
+          "options": [
+            {
+              "value": "offline",
+              "label": {
+                "en": "Offline",
+                "fr": "Hors ligne"
+              }
+            },
+            {
+              "value": "location_error",
+              "label": {
+                "en": "Location error",
+                "fr": "Erreur de position"
+              }
+            },
+            {
+              "value": "out_of_boundary",
+              "label": {
+                "en": "Out of boundary",
+                "fr": "Hors zone"
+              }
+            },
+            {
+              "value": "locked",
+              "label": {
+                "en": "Locked",
+                "fr": "Verrouillée"
+              }
+            },
+            {
+              "value": "update_failed",
+              "label": {
+                "en": "Update failed",
+                "fr": "Échec de mise à jour"
+              }
+            }
+          ]
+        }
+      ],
+      "variables": [
+        {
+          "key": "mower_name",
+          "type": "string",
+          "label": {
+            "en": "Mower name",
+            "fr": "Nom de la tondeuse"
+          }
+        },
+        {
+          "key": "state",
+          "type": "string",
+          "label": {
+            "en": "State",
+            "fr": "État"
+          }
+        },
+        {
+          "key": "battery",
+          "type": "number",
+          "label": {
+            "en": "Battery (%)",
+            "fr": "Batterie (%)"
+          }
+        },
+        {
+          "key": "problem",
+          "type": "string",
+          "label": {
+            "en": "Problem",
+            "fr": "Problème"
+          }
+        }
+      ]
+    }
+  ],
+  "scene_actions": [
+    {
+      "key": "start_mowing",
+      "label": {
+        "en": "Start mowing",
+        "fr": "Lancer la tonte"
+      },
+      "description": {
+        "en": "Starts a job with the zones and settings chosen in Gladys, or resumes a paused one.",
+        "fr": "Lance une tâche avec les zones et réglages choisis dans Gladys, ou reprend une tâche en pause."
+      },
+      "timeout_seconds": 30,
+      "fields": [
+        {
+          "key": "mower",
+          "type": "select",
+          "source": "devices",
+          "label": {
+            "en": "Mower",
+            "fr": "Tondeuse"
+          },
+          "required": true
+        }
+      ],
+      "outputs": [
+        {
+          "key": "result",
+          "type": "string",
+          "label": {
+            "en": "Result",
+            "fr": "Résultat"
+          }
+        }
+      ]
+    },
+    {
+      "key": "pause_mowing",
+      "label": {
+        "en": "Pause mowing",
+        "fr": "Mettre la tonte en pause"
+      },
+      "description": {
+        "en": "Pauses the current job.",
+        "fr": "Met la tâche en cours en pause."
+      },
+      "timeout_seconds": 30,
+      "fields": [
+        {
+          "key": "mower",
+          "type": "select",
+          "source": "devices",
+          "label": {
+            "en": "Mower",
+            "fr": "Tondeuse"
+          },
+          "required": true
+        }
+      ],
+      "outputs": [
+        {
+          "key": "result",
+          "type": "string",
+          "label": {
+            "en": "Result",
+            "fr": "Résultat"
+          }
+        }
+      ]
+    },
+    {
+      "key": "return_to_dock",
+      "label": {
+        "en": "Send a mower back to its dock",
+        "fr": "Renvoyer une tondeuse à sa base"
+      },
+      "description": {
+        "en": "The job, if any, is kept paused.",
+        "fr": "La tâche éventuelle est gardée en pause."
+      },
+      "timeout_seconds": 30,
+      "fields": [
+        {
+          "key": "mower",
+          "type": "select",
+          "source": "devices",
+          "label": {
+            "en": "Mower",
+            "fr": "Tondeuse"
+          },
+          "required": true
+        }
+      ],
+      "outputs": [
+        {
+          "key": "result",
+          "type": "string",
+          "label": {
+            "en": "Result",
+            "fr": "Résultat"
+          }
+        }
+      ]
+    },
+    {
+      "key": "get_mower_status",
+      "label": {
+        "en": "Read a mower",
+        "fr": "Lire une tondeuse"
+      },
+      "description": {
+        "en": "Hands the state of the mower to the next steps of the scene.",
+        "fr": "Passe l'état de la tondeuse aux étapes suivantes de la scène."
+      },
+      "timeout_seconds": 45,
+      "fields": [
+        {
+          "key": "mower",
+          "type": "select",
+          "source": "devices",
+          "label": {
+            "en": "Mower",
+            "fr": "Tondeuse"
+          },
+          "required": true
+        },
+        {
+          "key": "refresh",
+          "type": "boolean",
+          "label": {
+            "en": "Ask the mower first",
+            "fr": "Interroger la tondeuse d'abord"
+          },
+          "description": {
+            "en": "Otherwise the last state received is used.",
+            "fr": "Sinon, le dernier état reçu est utilisé."
+          },
+          "default": false
+        }
+      ],
+      "outputs": [
+        {
+          "key": "mower_name",
+          "type": "string",
+          "label": {
+            "en": "Mower name",
+            "fr": "Nom de la tondeuse"
+          }
+        },
+        {
+          "key": "state",
+          "type": "string",
+          "label": {
+            "en": "State",
+            "fr": "État"
+          }
+        },
+        {
+          "key": "online",
+          "type": "boolean",
+          "label": {
+            "en": "Online",
+            "fr": "En ligne"
+          }
+        },
+        {
+          "key": "mowing",
+          "type": "boolean",
+          "label": {
+            "en": "Mowing",
+            "fr": "En tonte"
+          }
+        },
+        {
+          "key": "docked",
+          "type": "boolean",
+          "label": {
+            "en": "On or going to the dock",
+            "fr": "Sur la base ou en route"
+          }
+        },
+        {
+          "key": "battery",
+          "type": "number",
+          "label": {
+            "en": "Battery (%)",
+            "fr": "Batterie (%)"
+          }
+        },
+        {
+          "key": "progress",
+          "type": "number",
+          "label": {
+            "en": "Progress (%)",
+            "fr": "Avancement (%)"
+          }
+        },
+        {
+          "key": "remaining_minutes",
+          "type": "number",
+          "label": {
+            "en": "Remaining (min)",
+            "fr": "Restant (min)"
+          }
+        },
+        {
+          "key": "problem",
+          "type": "string",
+          "label": {
+            "en": "Problem",
+            "fr": "Problème"
+          }
+        }
+      ]
     }
   ]
 }

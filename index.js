@@ -55,6 +55,8 @@ import { modelLimits } from './src/mammotion/models.js';
 import { WORK_MODES } from './src/mammotion/telemetry.js';
 import { zoneSlug } from './src/config.js';
 import { renderMap, toCameraImage } from './src/map/render.js';
+import { MowerEventTracker, SCENE_ACTION, statusOutputs } from './src/scenes.js';
+import { buildMowerWidget, messageContent, WIDGET, WIDGET_ACTION } from './src/widgets.js';
 
 const gladys = new GladysIntegration();
 
@@ -298,7 +300,45 @@ async function pollMower(mower, { force = false } = {}) {
 }
 
 // Model range and map image follow the state of the mower.
+// The last status of each mower, whoever read it (poll or broker push): the
+// widget and get_mower_status answer from it without a message to the mower.
+const lastStatuses = new Map();
+const widgetSignatures = new Map();
+const sceneEvents = new MowerEventTracker();
+
+/**
+ * Fire the scene triggers of a status, and nudge the widget when what it shows
+ * moved. Never throws: an event Gladys refuses must not fail the read.
+ */
+async function observeStatus(mower, status) {
+  lastStatuses.set(mower.iotId, status);
+  const deviceId = mowerIds(gladys, mower).device;
+  for (const { key, data } of sceneEvents.observe(deviceId, mower.name, status, config.language)) {
+    logger.info(`${mower.name}: scene event ${key}`);
+    await gladys
+      .publishSceneEvent(key, data)
+      .catch((err) => logger.warn(`Scene event ${key} not accepted: ${err.message}`));
+  }
+  const signature = JSON.stringify([
+    status.workMode,
+    status.online,
+    status.battery,
+    status.charging,
+    status.progressPercent,
+    status.remainingMinutes,
+  ]);
+  if (widgetSignatures.get(mower.iotId) !== signature) {
+    widgetSignatures.set(mower.iotId, signature);
+    try {
+      gladys.requestWidgetRefresh(WIDGET.MOWER);
+    } catch (err) {
+      logger.debug(`Widget refresh not requested: ${err.message}`);
+    }
+  }
+}
+
 async function afterStatus(mower, status) {
+  await observeStatus(mower, status);
   await rememberBladeHeight(mower, status.bladeHeightMm).catch((err) =>
     logger.warn(`${mower.name}: setting lists not updated: ${err.message}`),
   );
@@ -472,6 +512,21 @@ gladys.onSetValue(async (device, feature, value) => {
     logger.info(`${mower.name}: ${settingKey} = ${value} for the next job`);
     return;
   }
+  await controlMower(mower, key, value, feature.external_id);
+});
+
+/**
+ * Send one order to a mower, the way the features of its device do: the Mowing
+ * switch, Return to dock, Stop job, Refresh. The scene actions and the widget
+ * buttons go through here too, so an order refused for the device is refused
+ * for them, with the same reason.
+ * @param {object} mower
+ * @param {string} key the feature key (FEATURE.*)
+ * @param {number|string} value the value written to that feature
+ * @param {string} featureId the feature external_id, whose state is published
+ * @returns {Promise<string|null>} the command sent, null when there was nothing to do
+ */
+async function controlMower(mower, key, value, featureId) {
   const on = Number(value) === 1 ? 1 : 0;
   let command;
   try {
@@ -479,7 +534,7 @@ gladys.onSetValue(async (device, feature, value) => {
   } catch (err) {
     logger.warn(`${mower.name}: ${err.message}`);
     // Put the switch back: the order was not sent.
-    await gladys.publishState(feature.external_id, on ? 0 : 1).catch(() => {});
+    await gladys.publishState(featureId, on ? 0 : 1).catch(() => {});
     throw err;
   }
   logger.info(
@@ -487,27 +542,27 @@ gladys.onSetValue(async (device, feature, value) => {
   );
   if (!command) {
     // A push button (Stop job) has no state to put back.
-    if (key !== FEATURE.STOP) await gladys.publishState(feature.external_id, on);
-    return;
+    if (key !== FEATURE.STOP) await gladys.publishState(featureId, on);
+    return command;
   }
   if (command === 'refresh') {
     // Answer Gladys now: the report comes back on the broker within seconds.
     pollMower(mower, { force: true }).catch((err) =>
       logger.warn(`Refresh failed for ${mower.name}: ${err.message}`),
     );
-    return;
+    return command;
   }
   if (command === 'startJob') {
     // Zones + route + start take longer than the 5 s Gladys waits for an answer.
-    await gladys.publishState(feature.external_id, 1);
+    await gladys.publishState(featureId, 1);
     getClient()
       .startJob(mower, mowerSettings(mower, config))
       .then(() => scheduleRefresh(mower, REFRESH_AFTER_START_MS))
       .catch(async (err) => {
         logger.warn(`${mower.name}: new job not started: ${err.message}`);
-        await gladys.publishState(feature.external_id, 0).catch(() => {});
+        await gladys.publishState(featureId, 0).catch(() => {});
       });
-    return;
+    return command;
   }
   await getClient().sendCommand(mower, command);
   if (command === 'stop') {
@@ -515,7 +570,7 @@ gladys.onSetValue(async (device, feature, value) => {
     // new one, even before the mower reports it.
     rememberWorkMode(mower, WORK_MODES.READY);
     scheduleRefresh(mower);
-    return;
+    return command;
   }
   if (command === 'pause') {
     // "Mowing" or "Stop job" right after must see the pause: do not wait for
@@ -523,9 +578,10 @@ gladys.onSetValue(async (device, feature, value) => {
     rememberWorkMode(mower, WORK_MODES.PAUSE);
   }
   // The mower accepted the order: reflect it now, the refresh confirms it.
-  await gladys.publishState(feature.external_id, on);
+  await gladys.publishState(featureId, on);
   scheduleRefresh(mower);
-});
+  return command;
+}
 
 // --- Device created or updated (Discovery screen): fill the setting lists ---
 async function onDeviceSaved(device) {
@@ -580,6 +636,89 @@ gladys.onAction('refresh', async () => {
     fr: `${mowers.length} tondeuse(s) rafraîchie(s).`,
   };
 });
+
+// --- Scene actions (Gladys 5.1) ----------------------------------------------
+// The `mower` field is a device picked in Gladys: its external_id.
+function mowerOfField(externalId) {
+  const mower = externalId ? findMowerByDevice(gladys, { external_id: externalId }) : null;
+  if (!mower) {
+    throw new Error(`Unknown Mammotion mower ${externalId ?? '(none selected)'}`);
+  }
+  return mower;
+}
+
+/** Run an order on a mower and say, in a word, what it did. */
+async function orderMower(mower, key, value) {
+  const command = await controlMower(mower, key, value, mowerIds(gladys, mower).feature(key));
+  return ORDER_RESULTS[key]?.[value]?.[command ?? 'none'] ?? command ?? 'nothing_to_do';
+}
+
+// What an order did, as the `result` output of the actions says it.
+const ORDER_RESULTS = {
+  [FEATURE.MOWING]: {
+    1: { startJob: 'started', resume: 'resumed', none: 'already_mowing' },
+    0: { pause: 'paused', none: 'not_mowing' },
+  },
+  [FEATURE.DOCK]: { 1: { dock: 'returning', none: 'already_docked' } },
+};
+
+gladys.onSceneAction(SCENE_ACTION.START_MOWING, async (fields) => ({
+  result: await orderMower(mowerOfField(fields.mower), FEATURE.MOWING, 1),
+}));
+
+gladys.onSceneAction(SCENE_ACTION.PAUSE_MOWING, async (fields) => ({
+  result: await orderMower(mowerOfField(fields.mower), FEATURE.MOWING, 0),
+}));
+
+gladys.onSceneAction(SCENE_ACTION.RETURN_TO_DOCK, async (fields) => ({
+  result: await orderMower(mowerOfField(fields.mower), FEATURE.DOCK, 1),
+}));
+
+gladys.onSceneAction(SCENE_ACTION.GET_STATUS, async (fields) => {
+  const mower = mowerOfField(fields.mower);
+  if (fields.refresh === true || fields.refresh === 'true') {
+    await pollMower(mower, { force: true });
+  }
+  return statusOutputs(mower.name, lastStatuses.get(mower.iotId) ?? null, config.language);
+});
+
+// --- Dashboard widget (Gladys 5.1) ---------------------------------------------
+// Built from memory: opening a dashboard sends nothing to the mower.
+gladys.onWidgetGet(WIDGET.MOWER, async ({ settings } = {}) => {
+  const mower = settings?.mower ? findMowerByDevice(gladys, { external_id: settings.mower }) : null;
+  if (!mower) {
+    return messageContent({
+      en: 'Choose a mower in the settings of this widget.',
+      fr: 'Choisissez une tondeuse dans les réglages de ce widget.',
+    });
+  }
+  return buildMowerWidget(mower.name, lastStatuses.get(mower.iotId) ?? null);
+});
+
+const WIDGET_ORDERS = {
+  [WIDGET_ACTION.START]: [FEATURE.MOWING, 1],
+  [WIDGET_ACTION.PAUSE]: [FEATURE.MOWING, 0],
+  [WIDGET_ACTION.DOCK]: [FEATURE.DOCK, 1],
+};
+
+gladys.onWidgetAction(WIDGET.MOWER, async (actionKey, _params, { settings } = {}) => {
+  const order = WIDGET_ORDERS[actionKey];
+  if (!order) {
+    throw new Error(`Unknown widget action ${actionKey}`);
+  }
+  const result = await orderMower(mowerOfField(settings?.mower), ...order);
+  return ORDER_MESSAGES[result] ?? { en: 'Order sent.', fr: 'Ordre envoyé.' };
+});
+
+const ORDER_MESSAGES = {
+  started: { en: 'Mowing started.', fr: 'Tonte lancée.' },
+  resumed: { en: 'Mowing resumed.', fr: 'Tonte reprise.' },
+  already_mowing: { en: 'Already mowing.', fr: 'Déjà en tonte.' },
+  paused: { en: 'Mowing paused.', fr: 'Tonte en pause.' },
+  not_mowing: { en: 'Not mowing.', fr: 'Pas en tonte.' },
+  returning: { en: 'Returning to the dock.', fr: 'Retour à la base.' },
+  already_docked: { en: 'Already on the dock.', fr: 'Déjà sur la base.' },
+};
 
 // --- Configuration updated by the user ---------------------------------------
 gladys.onConfigUpdated(async (newConfig) => {
