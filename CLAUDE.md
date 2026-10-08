@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-A Gladys Assistant **external integration** (Node 20+, ESM, no build step) for **Mammotion**
+A Gladys Assistant **external integration** (Node 22+, ESM, no build step) for **Mammotion**
 robot mowers (Luba, Luba 2, Luba mini, Yuka…). Each mower becomes a Gladys device: mowing switch,
 return to dock, stop job, refresh button, status text, battery, charging, blade height, job
 progress / elapsed / remaining, area, lifetime counters, zone switches and setting selects for the
@@ -50,6 +50,7 @@ src/devices/index.js      device lookup helpers
 src/map/render.js, font.js  map rendering to JPEG for the camera device
 src/scenes.js             scene triggers (transitions) and scene action outputs (pure)
 src/widgets.js            dashboard widget `mower` (pure, built from the last status)
+src/orders.js             job-start guard, order results/messages, "Refresh the mowers" action
 ```
 
 ### Invariants worth knowing
@@ -61,7 +62,15 @@ src/widgets.js            dashboard widget `mower` (pure, built from the last st
   nothing; the mower is synced before an order, and a report is only requested when needed.
 - **Starting a job is a real job**: zones (none switched on = every zone) and the configured
   settings (blade height, speed, spacing, angle, pattern, laps, obstacle detection) are sent. The
-  app keeps its own settings on the phone; the mower cannot give them back.
+  app keeps its own settings on the phone; the mower cannot give them back. It takes 30–60 s
+  while the mower still reports "ready": `JobStarts` (`src/orders.js`) refuses a second start
+  meanwhile (result `already_starting`), taken synchronously before any await.
+- **Auth errors are typed, never guessed from a message**: only a cloud answer that refuses the
+  session (HTTP 401/403, Aliyun 401/460/29003, Mammotion 401, or a cloud message in those words)
+  becomes a `MammotionAuthError`; `isAuthError` checks the type. Logins and Aliyun sessions in
+  flight are shared by concurrent callers.
+- **The broker TLS certificate is not checked** (`rejectUnauthorized: false`, as the app and
+  PyMammotion do); the risk is documented in `mqtt.js` and the user docs.
 - **Polling**: Gladys `poll_frequency` is an enum in ms (1 s–60 s, any other value rejects the
   whole discovery); `devicePollFrequency()` picks the tick and `onPoll` skips calls inside the
   configured interval. Devices carry `should_poll: true` (without it Gladys never polls them;

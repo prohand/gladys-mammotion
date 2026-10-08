@@ -28,7 +28,7 @@ import {
   buildZoneListRequestContent,
   receiverFor,
 } from './commands.js';
-import { HttpError, requestJson } from './http.js';
+import { authErrorFromResponse, HttpError, MammotionAuthError, requestJson } from './http.js';
 import { MammotionMqtt } from './mqtt.js';
 import { mowingZoneNames, zoneSlug } from '../config.js';
 import {
@@ -72,26 +72,21 @@ const NAVIGATION_BOARD = 17;
 // RTK base stations share the account with the mowers but are not mowers.
 const RTK_PRODUCT_KEYS = new Set(['a1qXkZ5P39W', 'a1Nc68bGZzX', 'a1NfZqdSREf', 'a1ZuQVL7UiN']);
 
-const AUTH_ERROR_HINTS = [
-  'token',
-  'session',
-  'unauthorized',
-  'not login',
-  'identityid is blank',
-  'identity id is blank',
-  'auth error',
-  'forbidden',
-];
+// Answer code of the Mammotion API for a refused or expired access token.
+const MAMMOTION_AUTH_CODES = [401];
 
+/**
+ * Whether logging in again may cure `err`: an HTTP 401/403, or an answer of a
+ * cloud that refused the session (MammotionAuthError, see http.js). Decided by
+ * the type of the error, never by its wording: our own errors ("no iot domain
+ * in the access token") are not session problems, and taking them for one
+ * logged in again at every poll and reported the cloud unreachable.
+ */
 export function isAuthError(err) {
-  if (err instanceof HttpError && (err.status === 401 || err.status === 403)) {
+  if (err instanceof MammotionAuthError) {
     return true;
   }
-  if ([401, 460].includes(err?.aliyunCode)) {
-    return true;
-  }
-  const message = String(err?.message ?? '').toLowerCase();
-  return AUTH_ERROR_HINTS.some((hint) => message.includes(hint));
+  return err instanceof HttpError && (err.status === 401 || err.status === 403);
 }
 
 /**
@@ -130,6 +125,16 @@ export function isNotBoundError(err) {
   return /not bind|not bound/i.test(String(err?.message ?? ''));
 }
 
+/** The error of a Mammotion API answer whose code is not 0. */
+function mammotionError(response, url) {
+  const fallback = `Mammotion API error on ${url}`;
+  const error =
+    authErrorFromResponse(response?.msg, response?.code, MAMMOTION_AUTH_CODES, fallback) ??
+    new Error(response?.msg || fallback);
+  error.mammotionCode = response?.code;
+  return error;
+}
+
 const EMPTY_STATUS = {
   battery: null,
   workMode: null,
@@ -145,6 +150,8 @@ export function isRtkBaseStation(entry) {
   return RTK_PRODUCT_KEYS.has(entry.productKey) || name.startsWith('rtk');
 }
 
+export { MammotionAuthError };
+
 export class MammotionClient {
   /**
    * @param {{ email: string, password: string, onMqttUpdate?: (iotId: string) => void }} options
@@ -156,6 +163,11 @@ export class MammotionClient {
     this.password = password;
     this.session = null;
     this.aliyun = null;
+    // Logins / Aliyun sessions in flight, shared by the callers that ask
+    // meanwhile: parallel polls each opening their own session would cost
+    // several logins, and a later one can invalidate the token of the first.
+    this.loginPromise = null;
+    this.aliyunPromise = null;
     // iotId -> time (ms) of the last sync / report request sent.
     this.lastSyncAt = new Map();
     this.lastReportRequestAt = new Map();
@@ -169,7 +181,15 @@ export class MammotionClient {
 
   // --- Mammotion OAuth ------------------------------------------------------
 
-  async login() {
+  /** Open a new Mammotion session; callers asking meanwhile share it. */
+  login() {
+    this.loginPromise ??= this.openSession().finally(() => {
+      this.loginPromise = null;
+    });
+    return this.loginPromise;
+  }
+
+  async openSession() {
     if (!this.email || !this.password) {
       throw new Error('Email and password are required');
     }
@@ -227,9 +247,21 @@ export class MammotionClient {
     if (!force && this.aliyun && this.aliyun.expiresAt > Date.now()) {
       return this.aliyun;
     }
+    this.aliyunPromise ??= this.openAliyun().finally(() => {
+      this.aliyunPromise = null;
+    });
+    return this.aliyunPromise;
+  }
+
+  async openAliyun() {
     const session = await this.ensureSession();
-    this.aliyun = await createAliyunSession(session);
-    return this.aliyun;
+    const aliyun = await createAliyunSession(session);
+    // A login meanwhile dropped the sessions derived from the old one: do not
+    // put this one back in its place.
+    if (this.session === session) {
+      this.aliyun = aliyun;
+    }
+    return aliyun;
   }
 
   /** Run `fn`, and retry it once with fresh sessions on an auth error. */
@@ -260,7 +292,7 @@ export class MammotionClient {
     const session = await this.ensureSession();
     const response = await requestJson(url, { headers: this.mammotionHeaders(session) });
     if (response?.code !== 0) {
-      throw new Error(response?.msg || `Mammotion API error on ${url}`);
+      throw mammotionError(response, url);
     }
     return response.data;
   }
@@ -273,9 +305,7 @@ export class MammotionClient {
       body: JSON.stringify(body),
     });
     if (response?.code !== 0) {
-      const error = new Error(response?.msg || `Mammotion API error on ${url}`);
-      error.mammotionCode = response?.code;
-      throw error;
+      throw mammotionError(response, url);
     }
     return response.data;
   }

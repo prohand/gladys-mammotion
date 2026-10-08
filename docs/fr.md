@@ -98,6 +98,15 @@ une scène, sans fausse alerte.
 > l'application, et utilisez ce compte ici. Sinon l'application sur votre
 > téléphone peut être déconnectée quand Gladys se connecte.
 
+> Sécurité : les tondeuses récentes passent par le broker MQTT de Mammotion,
+> dont le certificat TLS n'est **pas vérifié** (comme le font l'application
+> Mammotion et les autres clients open source : rien n'indique que le broker
+> présente un certificat qu'une vérification standard accepte). Quelqu'un
+> capable d'intercepter le trafic de votre réseau pourrait se faire passer
+> pour le broker et lire le jeton d'accès, de courte durée, du compte. Un
+> compte dédié avec la seule tondeuse partagée (conseil ci-dessus) limite ce
+> qu'il obtiendrait.
+
 ## Widget, déclencheurs et actions de scène (Gladys 5.1)
 
 ### Widget « Tondeuse Mammotion »
@@ -132,7 +141,11 @@ déclencheur l'avancement, « tâche en pause pour recharger » ou le problème.
   valeur fraîche.
 
 Les trois premières renvoient un **résultat** (`started`, `resumed`,
-`already_mowing`, `paused`, `not_mowing`, `returning`, `already_docked`).
+`already_mowing`, `already_starting`, `paused`, `not_mowing`, `returning`,
+`already_docked`). Une nouvelle tâche met 30 à 60 s à démarrer (zones,
+trajet, puis départ) : un autre « Lancer la tonte » pendant ce temps, depuis
+une scène, le widget ou l'interrupteur **Tonte**, ne lance rien et répond
+`already_starting`.
 
 ## Exemples de scènes
 
@@ -169,7 +182,8 @@ Les trois premières renvoient un **résultat** (`started`, `resumed`,
 - **Aucune tondeuse trouvée** : vérifiez que la tondeuse apparaît bien dans
   l'application Mammotion avec ce compte (propriétaire ou partage).
 - **Les valeurs ne bougent pas** : appuyez sur **Rafraîchir** (sur le tableau
-  de bord) ou sur **Rafraîchir les tondeuses** (onglet Configuration).
+  de bord) ou sur **Rafraîchir les tondeuses** (onglet Configuration), qui
+  lit toutes les tondeuses et nomme celles qu'il n'a pas pu lire.
   Les tondeuses récentes (broker Mammotion) envoient leur état d'elles-mêmes ;
   Gladys ne leur demande un rapport qu'au plus toutes les 5 minutes (et juste
   après une commande), pour ne pas dépasser le quota du cloud Mammotion ni

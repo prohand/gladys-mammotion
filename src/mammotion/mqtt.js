@@ -198,7 +198,13 @@ export class MammotionMqtt {
       keepalive: 60,
       reconnectPeriod: 30_000,
       connectTimeout: 30_000,
-      // Same as the Mammotion app / PyMammotion: no certificate check.
+      // No certificate check, like the Mammotion app and PyMammotion: nothing
+      // shows the broker (host handed out by /v1/mqtt/auth/jwt) presents a
+      // certificate a standard check accepts, and a refused handshake would
+      // silence every broker mower. It could not be checked from here (the
+      // broker port was out of reach). The risk: whoever can intercept the
+      // traffic can pose as the broker and read `password`, the account's
+      // short-lived JWT. Documented for the users in docs/en.md and fr.md.
       rejectUnauthorized: false,
     });
     this.client = client;
