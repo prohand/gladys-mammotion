@@ -57,8 +57,19 @@ import { zoneSlug } from './src/config.js';
 import { renderMap, toCameraImage } from './src/map/render.js';
 import { MowerEventTracker, SCENE_ACTION, statusOutputs } from './src/scenes.js';
 import { buildMowerWidget, messageContent, WIDGET, WIDGET_ACTION } from './src/widgets.js';
+import { JobStarts, orderMessage, orderResult, refreshAll, STARTING } from './src/orders.js';
 
 const gladys = new GladysIntegration();
+
+// Safety net: a promise rejected with nobody to catch it (a background task
+// started by an SDK handler, a timer callback) would make Node stop the whole
+// integration, and every mower would go silent until the supervisor restarts
+// the container. Log it instead: the next poll or order tries again.
+// Deliberately no uncaughtException handler: swallowing those would keep a
+// process running in an unknown state.
+process.on('unhandledRejection', (reason) => {
+  logger.error('Unhandled promise rejection', reason);
+});
 
 // Delay before re-reading a mower after a command, so the new state shows up
 // without waiting for the next poll.
@@ -83,6 +94,9 @@ let initRetryTimer = null;
 const refreshTimers = new Set();
 // Last poll time of each mower (iotId -> ms), to honor poll_frequency.
 const lastPollAt = new Map();
+// Jobs being started (zones + route + start): a second start meanwhile is
+// refused. Held until the refresh that follows a start has read the mower.
+const jobStarts = new JobStarts({ holdMs: REFRESH_AFTER_START_MS + 15_000 });
 
 function getClient() {
   if (!client || client.email !== config.email || client.password !== config.password) {
@@ -553,15 +567,38 @@ async function controlMower(mower, key, value, featureId) {
     return command;
   }
   if (command === 'startJob') {
-    // Zones + route + start take longer than the 5 s Gladys waits for an answer.
-    await gladys.publishState(featureId, 1);
-    getClient()
-      .startJob(mower, mowerSettings(mower, config))
-      .then(() => scheduleRefresh(mower, REFRESH_AFTER_START_MS))
-      .catch(async (err) => {
-        logger.warn(`${mower.name}: new job not started: ${err.message}`);
-        await gladys.publishState(featureId, 0).catch(() => {});
-      });
+    // Zones + route + start take longer than the 5 s Gladys waits for an answer:
+    // it runs in the background, and a second start meanwhile is refused (the
+    // mower still says "ready" while its route is planned). The switch shows
+    // the order at once, and the job only starts once Gladys has that state,
+    // so a quick failure putting it back to 0 cannot arrive first.
+    const switchOn = gladys.publishState(featureId, 1);
+    const started = jobStarts.launch(
+      mower.iotId,
+      async () => {
+        await switchOn;
+        await getClient().startJob(mower, mowerSettings(mower, config));
+      },
+      {
+        onStarted: () => {
+          // Like a pause: "Mowing" off or "Stop job" right after must see the
+          // job. Only the order memory moves, never the scene triggers: they
+          // follow what the mower reports, so a start that fails fires nothing.
+          rememberWorkMode(mower, WORK_MODES.WORKING);
+          scheduleRefresh(mower, REFRESH_AFTER_START_MS);
+        },
+        onFailed: async (err) => {
+          logger.warn(`${mower.name}: new job not started: ${err.message}`);
+          await gladys.publishState(featureId, 0).catch(() => {});
+        },
+      },
+    );
+    if (!started) {
+      logger.info(`${mower.name}: a job is already being started, this start is ignored`);
+      await switchOn.catch(() => {});
+      return STARTING;
+    }
+    await switchOn;
     return command;
   }
   await getClient().sendCommand(mower, command);
@@ -626,16 +663,9 @@ gladys.onAction('test_connection', async () => {
   };
 });
 
-gladys.onAction('refresh', async () => {
-  const mowers = getMowers();
-  for (const mower of mowers) {
-    await pollMower(mower, { force: true });
-  }
-  return {
-    en: `${mowers.length} mower(s) refreshed.`,
-    fr: `${mowers.length} tondeuse(s) rafraîchie(s).`,
-  };
-});
+gladys.onAction('refresh', async () =>
+  refreshAll(getMowers(), (mower) => pollMower(mower, { force: true })),
+);
 
 // --- Scene actions (Gladys 5.1) ----------------------------------------------
 // The `mower` field is a device picked in Gladys: its external_id.
@@ -650,17 +680,8 @@ function mowerOfField(externalId) {
 /** Run an order on a mower and say, in a word, what it did. */
 async function orderMower(mower, key, value) {
   const command = await controlMower(mower, key, value, mowerIds(gladys, mower).feature(key));
-  return ORDER_RESULTS[key]?.[value]?.[command ?? 'none'] ?? command ?? 'nothing_to_do';
+  return orderResult(key, value, command);
 }
-
-// What an order did, as the `result` output of the actions says it.
-const ORDER_RESULTS = {
-  [FEATURE.MOWING]: {
-    1: { startJob: 'started', resume: 'resumed', none: 'already_mowing' },
-    0: { pause: 'paused', none: 'not_mowing' },
-  },
-  [FEATURE.DOCK]: { 1: { dock: 'returning', none: 'already_docked' } },
-};
 
 gladys.onSceneAction(SCENE_ACTION.START_MOWING, async (fields) => ({
   result: await orderMower(mowerOfField(fields.mower), FEATURE.MOWING, 1),
@@ -707,18 +728,8 @@ gladys.onWidgetAction(WIDGET.MOWER, async (actionKey, _params, { settings } = {}
     throw new Error(`Unknown widget action ${actionKey}`);
   }
   const result = await orderMower(mowerOfField(settings?.mower), ...order);
-  return ORDER_MESSAGES[result] ?? { en: 'Order sent.', fr: 'Ordre envoyé.' };
+  return orderMessage(result);
 });
-
-const ORDER_MESSAGES = {
-  started: { en: 'Mowing started.', fr: 'Tonte lancée.' },
-  resumed: { en: 'Mowing resumed.', fr: 'Tonte reprise.' },
-  already_mowing: { en: 'Already mowing.', fr: 'Déjà en tonte.' },
-  paused: { en: 'Mowing paused.', fr: 'Tonte en pause.' },
-  not_mowing: { en: 'Not mowing.', fr: 'Pas en tonte.' },
-  returning: { en: 'Returning to the dock.', fr: 'Retour à la base.' },
-  already_docked: { en: 'Already on the dock.', fr: 'Déjà sur la base.' },
-};
 
 // --- Configuration updated by the user ---------------------------------------
 gladys.onConfigUpdated(async (newConfig) => {

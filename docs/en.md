@@ -86,6 +86,14 @@ same yes/no value, same use in a scene, no false alert.
 > app, and use that account here. Otherwise the app on your phone may be
 > logged out when Gladys connects.
 
+> Security: the recent mowers report through the Mammotion MQTT broker, and
+> its TLS certificate is **not checked** (like the Mammotion app and the other
+> open-source clients: the broker is not known to present a certificate a
+> standard check accepts). Someone able to intercept the traffic of your
+> network could pose as the broker and read the short-lived access token of
+> the account. A dedicated account with only the mower shared (tip above)
+> limits what it would give away.
+
 ## Widget, scene triggers and actions (Gladys 5.1)
 
 ### "Mammotion mower" widget
@@ -119,7 +127,10 @@ progress, "job paused to recharge" or the problem.
   problem. Tick "Ask the mower first" for a fresh value.
 
 The first three return a **result** (`started`, `resumed`, `already_mowing`,
-`paused`, `not_mowing`, `returning`, `already_docked`).
+`already_starting`, `paused`, `not_mowing`, `returning`, `already_docked`).
+A new job takes 30 to 60 s to start (zones, route, then start): another
+"Start mowing" meanwhile, from a scene, the widget or the **Mowing** switch,
+starts nothing and answers `already_starting`.
 
 ## Scene ideas
 
@@ -152,7 +163,8 @@ The first three return a **result** (`started`, `resumed`, `already_mowing`,
 - **No mower found**: make sure the mower shows up in the Mammotion app with
   this account (owner or shared).
 - **Values do not change**: press **Refresh** (on the dashboard) or **Refresh
-  the mowers now** (Configuration tab). Recent mowers
+  the mowers now** (Configuration tab), which reads every mower and names
+  those it could not read. Recent mowers
   (Mammotion broker) push their state on their own; Gladys asks them for a
   report at most every 5 minutes (and right after a command), to stay within
   the Mammotion cloud quota and not cut the app on your phone.
