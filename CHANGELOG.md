@@ -6,6 +6,8 @@ All notable changes to this integration are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.3.1] - 2026-10-08
+
 ### Fixed
 
 - A second "Start mowing" (widget, scene, double click on the switch) while a new job is being planned (30 to 60 s) no longer plans a second route and sends a second start: it starts nothing and answers `already_starting`.
@@ -172,7 +174,8 @@ First public release.
 
 - Register Build and Release workflows on main
 
-[Unreleased]: https://github.com/prohand/gladys-mammotion/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/prohand/gladys-mammotion/compare/v1.3.1...HEAD
+[1.3.1]: https://github.com/prohand/gladys-mammotion/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/prohand/gladys-mammotion/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/prohand/gladys-mammotion/compare/v1.1.4...v1.2.0
 [1.1.4]: https://github.com/prohand/gladys-mammotion/compare/v1.1.3...v1.1.4
