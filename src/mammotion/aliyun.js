@@ -11,13 +11,16 @@
 // -----------------------------------------------------------------------------
 
 import { createHash, createHmac, randomBytes, randomUUID } from 'node:crypto';
-import { requestJson } from './http.js';
+import { authErrorFromResponse, requestJson } from './http.js';
 
 const ALIYUN_DOMAIN = 'api.link.aliyun.com';
 const OPEN_ACCOUNT_DOMAIN = 'sdk.openaccount.aliyun.com';
 const APP_KEY = '34231230';
 const APP_SECRET = '1ba85698bb10e19c6437413b61ba3445';
 const APP_VERSION = '1.11.130';
+// Answers of the gateway that mean "open a new session": 401 (request auth
+// error), 460 (iotToken invalid or expired), 29003 (identityId is blank).
+const AUTH_CODES = [401, 460, 29003];
 
 // Headers that are part of the string to sign "by position" and therefore
 // excluded from the `x-ca-signature-headers` block.
@@ -203,6 +206,16 @@ export async function createAliyunSession({ authorizationCode, countryCode }) {
 /** Throw a readable error when an Aliyun response is not a success. */
 export function assertAliyunOk(response, fallback) {
   if (response?.code !== 200) {
+    const authError = authErrorFromResponse(
+      response?.message || response?.msg,
+      response?.code,
+      AUTH_CODES,
+      fallback,
+    );
+    if (authError) {
+      authError.aliyunCode = response?.code;
+      throw authError;
+    }
     const error = new Error(apiMessage(response, fallback));
     error.aliyunCode = response?.code;
     throw error;

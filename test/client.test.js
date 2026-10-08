@@ -5,6 +5,7 @@
 import { test, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  MammotionAuthError,
   MammotionClient,
   isAuthError,
   isRtkBaseStation,
@@ -367,11 +368,91 @@ test('an expired session triggers one new login', async () => {
   assert.equal(calls.filter((c) => c.path === '/oauth2/token').length, 2);
 });
 
-test('isAuthError recognizes the usual auth failures', () => {
+test('isAuthError goes by the type of the error, not by its wording', () => {
   assert.ok(isAuthError(new HttpError('nope', 401)));
-  assert.ok(isAuthError(Object.assign(new Error('x'), { aliyunCode: 460 })));
-  assert.ok(isAuthError(new Error('Token expired')));
+  assert.ok(isAuthError(new HttpError('nope', 403)));
+  assert.ok(isAuthError(new MammotionAuthError('identityId is blank', { code: 29003 })));
+  assert.ok(!isAuthError(new HttpError('down', 502)));
   assert.ok(!isAuthError(new Error('Invalid device')));
+  // Our own errors, whatever words they hold.
+  assert.ok(
+    !isAuthError(new Error('Mammotion API unavailable: no iot domain in the access token')),
+  );
+  assert.ok(!isAuthError(new Error('Aliyun session creation failed')));
+});
+
+test('the cloud answers that refuse the session are auth errors', async () => {
+  mockLogin();
+  mockAliyun();
+  routes.unshift({
+    match: (c) => c.path === '/thing/status/get',
+    reply: () => json({ code: 29003, message: 'identityId is blank' }),
+  });
+  on('api-iot.mammotion.com', '/v1/mqtt/auth/jwt', () => json({ code: 401, msg: 'expired' }));
+  on('domestic.mammotion.com', '/device-server/v1/device/list', () =>
+    json({ code: 500, msg: 'Token expired' }),
+  );
+  const client = new MammotionClient({ email: 'me@example.com', password: 'pw' });
+  await assert.rejects(client.aliyunCall('/thing/status/get', '1.0.0', {}), (err) =>
+    isAuthError(err),
+  );
+  await assert.rejects(
+    client.mammotionPost('https://api-iot.mammotion.com/v1/mqtt/auth/jwt', {}),
+    (err) => isAuthError(err),
+  );
+  await assert.rejects(
+    client.mammotionGet('https://domestic.mammotion.com/device-server/v1/device/list'),
+    (err) => isAuthError(err),
+  );
+});
+
+test('an internal error is not taken for an expired session', async () => {
+  // An access token without the `iot` claim: the broker cannot be reached.
+  on('id.mammotion.com', '/oauth2/token', () =>
+    json({ code: 0, data: { access_token: jwt({ areaCode: 'FR' }), expires_in: 3600 } }),
+  );
+  const client = new MammotionClient({ email: 'me@example.com', password: 'pw' });
+  await assert.rejects(client.getMqttCredentials(), (err) => {
+    assert.match(err.message, /no iot domain/);
+    assert.ok(!isAuthError(err));
+    return true;
+  });
+  await assert.rejects(client.requestReport({ iotId: 'iot-1', name: 'Luba' }), /no iot domain/);
+  // One login for both: no new login for an error a login cannot cure.
+  assert.equal(calls.filter((c) => c.path === '/oauth2/token').length, 1);
+});
+
+test('simultaneous calls share one login and one Aliyun session', async () => {
+  mockLogin();
+  mockAliyun();
+  const client = new MammotionClient({ email: 'me@example.com', password: 'pw' });
+  const mower = { iotId: 'iot-1', name: 'Luba' };
+  const statuses = await Promise.all([
+    client.getStatus(mower),
+    client.getStatus(mower),
+    client.getStatus(mower),
+  ]);
+  assert.deepEqual(
+    statuses.map((s) => s.battery),
+    [64, 64, 64],
+  );
+  assert.equal(calls.filter((c) => c.path === '/oauth2/token').length, 1);
+  assert.equal(calls.filter((c) => c.path === '/account/createSessionByAuthCode').length, 1);
+});
+
+test('a failed login is not kept: the next call tries again', async () => {
+  let fail = true;
+  on('id.mammotion.com', '/oauth2/token', () =>
+    fail
+      ? json({ code: 1, msg: 'wrong password' })
+      : json({ code: 0, data: { access_token: jwt({ iot: 'x' }), expires_in: 3600 } }),
+  );
+  const client = new MammotionClient({ email: 'me@example.com', password: 'pw' });
+  await assert.rejects(Promise.all([client.ensureSession(), client.ensureSession()]));
+  assert.equal(calls.length, 1);
+  fail = false;
+  await client.ensureSession();
+  assert.equal(calls.length, 2);
 });
 
 test('isRtkBaseStation', () => {
