@@ -6,9 +6,36 @@ All notable changes to this integration are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- A second "Start mowing" (widget, scene, double click on the switch) while a new job is being planned (30 to 60 s) no longer plans a second route and sends a second start: it starts nothing and answers `already_starting`.
+- Internal errors (for instance "no iot domain in the access token") are no longer taken for an expired session: no more new login at every poll, nor "Mammotion cloud unreachable" for them. Only the answers of the cloud that refuse the session count as auth errors.
+- Simultaneous reads share one login and one Aliyun session instead of each opening their own.
+- **Refresh the mowers now** reads every mower even when one fails, and names those it could not read.
+- An unhandled promise rejection is logged instead of stopping the integration.
+
+### Changed
+
+- Node.js 22 or later is required (`engines`); CI tests Node 22 and 24 and builds the Docker image on pull requests.
+- The Docker image installs its dependencies with `npm ci` only (a lock out of sync fails the build) and drops the npm cache.
+- Dependabot also follows the Docker base image.
+
+### Security
+
+- Documented that the TLS certificate of the Mammotion MQTT broker is not checked (as in the Mammotion app), and what it exposes.
+
 ## [1.3.0] - 2026-10-07
 
-- Maintenance release, no functional change.
+### Added
+
+- Gladys 5.1 dashboard widget "Mammotion mower": state, battery, progress and remaining time of the job, and the buttons that make sense now (start or resume, pause, back to dock). Built from the last status in memory.
+- Scene triggers: a mower starts mowing, a mowing job ends, a mower is back on its dock, a mower has a problem.
+- Scene actions: start mowing, pause mowing, send a mower back to its dock, read a mower.
+
+### Changed
+
+- Requires Gladys 5.1.0 or later.
+- CI runs the store admission checks on pull requests; Dependabot updates the dependencies and the GitHub Actions.
 
 ## [1.2.0] - 2026-10-06
 
