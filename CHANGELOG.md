@@ -6,6 +6,10 @@ All notable changes to this integration are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- The manifest declares its transport: `cloud` (Mammotion cloud and Aliyun IoT, no local link).
+
 ## [1.3.1] - 2026-10-08
 
 ### Fixed
