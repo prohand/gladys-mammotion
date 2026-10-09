@@ -6,6 +6,8 @@ All notable changes to this integration are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-10-09
+
 ### Added
 
 - The manifest declares its transport: `cloud` (Mammotion cloud and Aliyun IoT, no local link).
@@ -178,7 +180,8 @@ First public release.
 
 - Register Build and Release workflows on main
 
-[Unreleased]: https://github.com/prohand/gladys-mammotion/compare/v1.3.1...HEAD
+[Unreleased]: https://github.com/prohand/gladys-mammotion/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/prohand/gladys-mammotion/compare/v1.3.1...v1.4.0
 [1.3.1]: https://github.com/prohand/gladys-mammotion/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/prohand/gladys-mammotion/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/prohand/gladys-mammotion/compare/v1.1.4...v1.2.0
