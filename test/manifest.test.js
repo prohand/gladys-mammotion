@@ -94,3 +94,7 @@ test('every speed of the list is kept as is by the config', () => {
     assert.equal(normalizeConfig({ mowing_speed: value }).mowing_speed, Number(value));
   }
 });
+
+test('the manifest declares the transports used (the mowers are reached through the Mammotion cloud only)', () => {
+  assert.deepEqual(manifest.transports, ['cloud']);
+});
