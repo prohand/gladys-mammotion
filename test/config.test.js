@@ -44,6 +44,9 @@ test('hasCredentials needs both email and password', () => {
 });
 
 test('the device poll frequency is always a value Gladys accepts', () => {
+  assert.deepEqual(GLADYS_POLL_FREQUENCIES_MS, [1000, 2000, 10000, 15000, 30000, 60000]);
+  assert.equal(devicePollFrequency(30), 30000);
+  assert.equal(devicePollFrequency(600), 60000);
   for (const seconds of [30, 45, 59, 60, 90, 600, 3600]) {
     const ms = devicePollFrequency(seconds);
     assert.ok(GLADYS_POLL_FREQUENCIES_MS.includes(ms), `${seconds} s -> ${ms} ms`);

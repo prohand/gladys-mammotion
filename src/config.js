@@ -10,6 +10,8 @@
 // rest of the code never has to deal with `undefined`.
 // -----------------------------------------------------------------------------
 
+import { DEVICE_POLL_FREQUENCIES } from '@gladysassistant/integration-sdk';
+
 // Bounds of the refresh interval, kept in sync with the manifest `min` / `max`.
 export const POLL_FREQUENCY_MIN = 30;
 export const POLL_FREQUENCY_MAX = 3600;
@@ -58,12 +60,17 @@ const MOWING_CHOICES = {
 // Gladys only accepts a few fixed device poll intervals, in MILLISECONDS
 // (1 s, 2 s, 10 s, 15 s, 30 s, 60 s). Any other value is refused with
 // "invalid poll frequency". The device is published with the closest allowed
-// value, and onPoll skips the calls that come before `poll_frequency`.
-export const GLADYS_POLL_FREQUENCIES_MS = [1000, 2000, 10000, 15000, 30000, 60000];
+// value, and onPoll skips the calls that come before `poll_frequency`. The
+// values come from the SDK, which mirrors the core enum.
+export const GLADYS_POLL_FREQUENCIES_MS = Object.values(DEVICE_POLL_FREQUENCIES).sort(
+  (a, b) => a - b,
+);
 
 /** Gladys device poll_frequency (ms) used for a user interval (s). */
 export function devicePollFrequency(seconds) {
-  return seconds < 60 ? 30_000 : 60_000;
+  return seconds < 60
+    ? DEVICE_POLL_FREQUENCIES.EVERY_30_SECONDS
+    : DEVICE_POLL_FREQUENCIES.EVERY_MINUTES;
 }
 
 function clampPollFrequency(value) {
