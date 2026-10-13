@@ -428,7 +428,7 @@ async function initialize() {
     await gladys.setConnectionStatus(false, {
       en: 'Enter the email and password of your Mammotion app account.',
       fr: 'Renseignez l’email et le mot de passe de votre compte Mammotion.',
-      de: 'Geben Sie die E-Mail-Adresse und das Passwort Ihres Kontos der Mammotion-App ein.',
+      de: 'Gib die E-Mail-Adresse und das Passwort deines Kontos der Mammotion-App ein.',
       es: 'Introduzca el correo electrónico y la contraseña de su cuenta de la aplicación Mammotion.',
     });
     return;
@@ -665,7 +665,7 @@ gladys.onAction('test_connection', async () => {
   if (!hasCredentials(config)) {
     throw new Error(
       'Enter the email and password first / Renseignez d’abord email et mot de passe / ' +
-        'Geben Sie zuerst E-Mail-Adresse und Passwort ein / ' +
+        'Gib zuerst E-Mail-Adresse und Passwort ein / ' +
         'Introduzca primero el correo electrónico y la contraseña',
     );
   }
@@ -728,7 +728,7 @@ gladys.onWidgetGet(WIDGET.MOWER, async ({ settings } = {}) => {
     return messageContent({
       en: 'Choose a mower in the settings of this widget.',
       fr: 'Choisissez une tondeuse dans les réglages de ce widget.',
-      de: 'Wählen Sie in den Einstellungen dieses Widgets einen Mäher aus.',
+      de: 'Wähle in den Einstellungen dieses Widgets einen Mäher aus.',
       es: 'Elija un cortacésped en la configuración de este widget.',
     });
   }

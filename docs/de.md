@@ -1,12 +1,12 @@
 # Mammotion
 
-Steuern Sie Ihren Mammotion-Mähroboter (Luba, Luba 2, Luba mini, Yuka…) über
+Steuere deinen Mammotion-Mähroboter (Luba, Luba 2, Luba mini, Yuka…) über
 Gladys: Mähen starten, pausieren und fortsetzen, den Mäher zur Ladestation
 zurückschicken und Akku, Status und Mähfortschritt verfolgen.
 
-## Was Sie erhalten
+## Was du erhältst
 
-Jeder Mäher Ihres Mammotion-Kontos erscheint mit:
+Jeder Mäher deines Mammotion-Kontos erscheint mit:
 
 - **Mähen** (Schalter): ein = einen Auftrag starten (oder den pausierten
   fortsetzen), aus = pausieren;
@@ -44,15 +44,15 @@ Jeder Mäher Ihres Mammotion-Kontos erscheint mit:
 - **Zonen ohne Namen** in der App heißen wie in der App („Zone 1“,
   „Zone 4“…).
 
-> **Einstellungen am Gerät** (wie bei der Dreame-Integration): Wählen Sie die
+> **Einstellungen am Gerät** (wie bei der Dreame-Integration): Wähle die
 > Zonen und die Werte in den Listen des Mähers (Dashboard oder Szene) und
-> schalten Sie dann **Mähen** ein: Der Auftrag startet mit diesen
+> schalte dann **Mähen** ein: Der Auftrag startet mit diesen
 > Einstellungen.
 >
 > - Zu Beginn übernehmen die Listen den Abschnitt „Neuer Mähauftrag“ der
 >   Konfiguration.
 > - Eine Auswahl in einer Liste gilt nur für diesen Mäher.
-> - Wenn Sie in der Konfiguration einen **neuen** Wert speichern, gilt er für
+> - Wenn du in der Konfiguration einen **neuen** Wert speichern, gilt er für
 >   alle Mäher.
 > - Die Zonenschalter erscheinen, sobald die Karte gelesen ist (beim Start der
 >   Integration, Mäher eingeschaltet), nach **Aktualisieren** im Tab
@@ -70,22 +70,22 @@ Jeder Mäher Ihres Mammotion-Kontos erscheint mit:
 >   Hinderniserkennung…), und startet dann den Auftrag.
 >
 > Die Mammotion-App behält ihre Einstellungen auf dem Telefon: Gladys kann sie
-> nicht lesen, tragen Sie sie in seiner Konfiguration ein. Das funktioniert mit
+> nicht lesen, trage sie in seiner Konfiguration ein. Das funktioniert mit
 > den Mähern des Mammotion-Brokers (neuere Luba 2, Luba mini, Yuka…), nicht
 > mit dem Luba 1.
 
 ## Konfiguration
 
-1. Öffnen Sie den Tab **Konfiguration** der Integration.
-2. Geben Sie die **E-Mail-Adresse** und das **Passwort** Ihres Kontos der
+1. Öffne den Tab **Konfiguration** der Integration.
+2. Gib die **E-Mail-Adresse** und das **Passwort** deines Kontos der
    Mammotion-App ein.
-3. Legen Sie das **Aktualisierungsintervall** fest (standardmäßig 300 s,
+3. Lege das **Aktualisierungsintervall** fest (standardmäßig 300 s,
    zwischen 30 und 3600 s): wie oft Gladys den Status des Mähers liest. Jede
    Abfrage fragt den Mäher nach seinem Zustand, was die Mammotion-App kurz
-   stören kann: Behalten Sie 300 s oder mehr bei.
-4. Speichern Sie und klicken Sie dann auf **Verbindung testen**: Die Anzahl der
+   stören kann: Behalte 300 s oder mehr bei.
+4. Speichere und klicke dann auf **Verbindung testen**: Die Anzahl der
    gefundenen Mäher wird angezeigt.
-5. Fügen Sie Ihre Mäher über den Tab **Entdecken** hinzu. Klicken Sie nach
+5. Füge deine Mäher über den Tab **Entdecken** hinzu. Klicke nach
    einem Update der Integration in diesem Tab auf **Aktualisieren**, um die
    neuen Funktionen zu erhalten (zum Beispiel die Taste Aktualisieren).
 
@@ -96,15 +96,15 @@ oder 1 und wurde daher als „0 %“ gelesen. Sie wird stattdessen als **binäre
 Eingang** veröffentlicht: gleicher Ja/Nein-Wert, gleiche Verwendung in einer
 Szene, kein Fehlalarm.
 
-> Tipp: Legen Sie ein zweites Mammotion-Konto an, teilen Sie den Mäher in der
-> App mit ihm und verwenden Sie dieses Konto hier. Andernfalls kann die App auf
-> Ihrem Telefon abgemeldet werden, wenn Gladys sich verbindet.
+> Tipp: Lege ein zweites Mammotion-Konto an, teile den Mäher in der
+> App mit ihm und verwende dieses Konto hier. Andernfalls kann die App auf
+> deinem Telefon abgemeldet werden, wenn Gladys sich verbindet.
 
 > Sicherheit: Die neueren Mäher melden sich über den MQTT-Broker von
 > Mammotion, und dessen TLS-Zertifikat wird **nicht geprüft** (wie bei der
 > Mammotion-App und den anderen Open-Source-Clients: Vom Broker ist nicht
 > bekannt, dass er ein Zertifikat vorlegt, das eine Standardprüfung
-> akzeptiert). Wer den Datenverkehr Ihres Netzwerks abfangen kann, könnte sich
+> akzeptiert). Wer den Datenverkehr deines Netzwerks abfangen kann, könnte sich
 > als Broker ausgeben und das kurzlebige Zugriffstoken des Kontos lesen. Ein
 > eigenes Konto, mit dem nur der Mäher geteilt ist (Tipp oben), begrenzt, was
 > dabei preisgegeben würde.
@@ -113,7 +113,7 @@ Szene, kein Fehlalarm.
 
 ### Widget „Mammotion-Mäher“
 
-Wählen Sie unter **Dashboard → Bearbeiten → Neues Widget** den Eintrag
+Wähle unter **Dashboard → Bearbeiten → Neues Widget** den Eintrag
 **Mammotion-Mäher** und dann den Mäher. Das Widget zeigt den Status, den Akku,
 den Fortschritt und die verbleibende Zeit des Auftrags sowie die Tasten, die
 gerade sinnvoll sind: **Mähen** (oder **Fortsetzen**), **Pause**, **Zur
@@ -140,7 +140,7 @@ Variablen: Name des Mähers, Status, Akku und je nach Auslöser der Fortschritt,
 - **Mähen pausieren**.
 - **Mäher zur Ladestation zurückschicken** (der Auftrag bleibt pausiert).
 - **Mäher auslesen**: Status, online, mäht, Akku, Fortschritt, verbleibende
-  Zeit, Problem. Haken Sie „Zuerst den Mäher abfragen“ an, um einen frischen
+  Zeit, Problem. Hake „Zuerst den Mäher abfragen“ an, um einen frischen
   Wert zu erhalten.
 
 Die ersten drei geben ein **Ergebnis** zurück (`started`, `resumed`,
@@ -175,31 +175,31 @@ antwortet `already_starting`.
   hinzufügen, dann auf dem Dashboard ein Widget **Kamera** hinzufügen und
   dieses Gerät wählen. Das Bild folgt dem Mäher während eines Auftrags
   (höchstens alle 15 s).
-- **Eine Einstellung der App prüfen**: Starten Sie einen Auftrag in der
-  Mammotion-App und suchen Sie dann in den Logs der Integration nach „route
+- **Eine Einstellung der App prüfen**: Starte einen Auftrag in der
+  Mammotion-App und suche dann in den Logs der Integration nach „route
   settings seen“. Die Zeile zeigt, was die App gesendet hat (`towardMode` =
   Winkelart, `channelMode` = Mähmuster…).
 
-- **„Mammotion-Cloud nicht erreichbar“**: Prüfen Sie E-Mail-Adresse und
-  Passwort und klicken Sie dann auf **Verbindung testen**.
-- **Kein Mäher gefunden**: Stellen Sie sicher, dass der Mäher in der
+- **„Mammotion-Cloud nicht erreichbar“**: Prüfe E-Mail-Adresse und
+  Passwort und klicke dann auf **Verbindung testen**.
+- **Kein Mäher gefunden**: Stelle sicher, dass der Mäher in der
   Mammotion-App mit diesem Konto erscheint (Eigentümer oder geteilt).
-- **Werte ändern sich nicht**: Drücken Sie **Aktualisieren** (auf dem
+- **Werte ändern sich nicht**: Drücke **Aktualisieren** (auf dem
   Dashboard) oder **Mäher jetzt aktualisieren** (Tab Konfiguration), was alle
   Mäher liest und diejenigen nennt, die nicht gelesen werden konnten. Neuere
   Mäher (Mammotion-Broker) senden ihren Zustand von selbst; Gladys fragt sie
   höchstens alle 5 Minuten (und direkt nach einem Befehl) nach einem Bericht,
-  um im Kontingent der Mammotion-Cloud zu bleiben und die App auf Ihrem
+  um im Kontingent der Mammotion-Cloud zu bleiben und die App auf deinem
   Telefon nicht abzumelden.
-- **Das Mähen startet nicht**: Lesen Sie die Logs. „The mower did not send its
-  zones“: Der Mäher hat nicht geantwortet, versuchen Sie es erneut. „Cannot
+- **Das Mähen startet nicht**: Lies die Logs. „The mower did not send its
+  zones“: Der Mäher hat nicht geantwortet, versuche es erneut. „Cannot
   start mowing now“: Der Mäher ist nicht bereit (kehrt zur Ladestation zurück,
   gesperrt…).
 - **„Der Akkustand von … liegt unter 20 % (aktuell: 0 %)“**, obwohl der Akku
   voll ist: Das war die alte Funktion **Lädt**, eingeordnet in der Kategorie
   Akku, die 0 ist, sobald der Mäher nicht lädt. Die neue Funktion **Lädt** ist
   ein binärer Eingang. Die alte bleibt bei den zuvor hinzugefügten Mähern:
-  Öffnen Sie den Tab **Entdecken** und klicken Sie beim Mäher auf
+  Öffne den Tab **Entdecken** und klicke beim Mäher auf
   **Aktualisieren** — Gladys löscht die Funktionen, die nicht mehr
   veröffentlicht werden, und die Warnung hört auf.
-- Für Details lesen Sie die Logs der Integration mit `LOG_LEVEL=debug`.
+- Für Details lies die Logs der Integration mit `LOG_LEVEL=debug`.

@@ -5,7 +5,7 @@
   "description": {
     "en": "Control your Mammotion mower (Luba, Yuka): mowing, pause, return to dock, battery and status.",
     "fr": "Pilotez votre tondeuse Mammotion (Luba, Yuka) : tonte, pause, retour à la base, batterie, état.",
-    "de": "Steuern Sie Ihren Mammotion-Mäher (Luba, Yuka): Mähen, Pause, zurück zur Station, Akku, Status.",
+    "de": "Steuere deinen Mammotion-Mäher (Luba, Yuka): Mähen, Pause, zurück zur Station, Akku, Status.",
     "es": "Controle su cortacésped Mammotion (Luba, Yuka): corte, pausa, vuelta a la base, batería y estado."
   },
   "version": "1.4.1",
@@ -31,7 +31,7 @@
       "description": {
         "en": "Use the email and password of your Mammotion app account. Tip: create a second account, share the mower with it from the app, and use it here, so Gladys does not log you out of your phone.",
         "fr": "Utilisez l'email et le mot de passe de votre compte de l'application Mammotion. Astuce : créez un second compte, partagez-lui la tondeuse depuis l'application et utilisez-le ici, pour que Gladys ne vous déconnecte pas de votre téléphone.",
-        "de": "Verwenden Sie die E-Mail-Adresse und das Passwort Ihres Kontos der Mammotion-App. Tipp: Legen Sie ein zweites Konto an, teilen Sie den Mäher in der App mit ihm und verwenden Sie es hier, damit Gladys Sie nicht auf Ihrem Telefon abmeldet.",
+        "de": "Verwende die E-Mail-Adresse und das Passwort deines Kontos der Mammotion-App. Tipp: Lege ein zweites Konto an, teile den Mäher in der App mit ihm und verwende es hier, damit Gladys dich nicht auf deinem Telefon abmeldet.",
         "es": "Utilice el correo electrónico y la contraseña de su cuenta de la aplicación Mammotion. Consejo: cree una segunda cuenta, compártale el cortacésped desde la aplicación y utilícela aquí, para que Gladys no cierre su sesión en el teléfono."
       },
       "links": [
@@ -150,7 +150,7 @@
       "description": {
         "en": "Settings of a new job started from Gladys (Mowing switch ON, mower docked or ready). Each mower also shows them as \"Zone to mow – …\" switches and \"Setting – …\" lists, to change them for that mower only, from the dashboard or a scene. Saving a new value here applies it to every mower. The Mammotion app keeps its own settings on the phone: Gladys cannot read them.",
         "fr": "Réglages d'une nouvelle tonte lancée par Gladys (interrupteur Tonte sur ON, tondeuse à la base ou prête). Chaque tondeuse les affiche aussi en interrupteurs « Zone à tondre – … » et en listes « Réglage – … », pour les changer pour elle seule, depuis le tableau de bord ou une scène. Enregistrer ici une nouvelle valeur l'applique à toutes les tondeuses. L'application Mammotion garde ses réglages dans le téléphone : Gladys ne peut pas les lire.",
-        "de": "Einstellungen eines neuen Auftrags, der von Gladys gestartet wird (Schalter Mähen auf EIN, Mäher in der Ladestation oder bereit). Jeder Mäher zeigt sie auch als Schalter „Zu mähende Zone – …“ und als Listen „Einstellung – …“, um sie nur für diesen Mäher zu ändern, über das Dashboard oder eine Szene. Wenn Sie hier einen neuen Wert speichern, gilt er für alle Mäher. Die Mammotion-App behält ihre eigenen Einstellungen auf dem Telefon: Gladys kann sie nicht lesen.",
+        "de": "Einstellungen eines neuen Auftrags, der von Gladys gestartet wird (Schalter Mähen auf EIN, Mäher in der Ladestation oder bereit). Jeder Mäher zeigt sie auch als Schalter „Zu mähende Zone – …“ und als Listen „Einstellung – …“, um sie nur für diesen Mäher zu ändern, über das Dashboard oder eine Szene. Wenn du hier einen neuen Wert speicherst, gilt er für alle Mäher. Die Mammotion-App behält ihre eigenen Einstellungen auf dem Telefon: Gladys kann sie nicht lesen.",
         "es": "Ajustes de una nueva tarea iniciada desde Gladys (interruptor Corte en ON, cortacésped en la base o listo). Cada cortacésped también los muestra como interruptores «Zona a cortar – …» y listas «Ajuste – …», para cambiarlos solo para él, desde el panel o una escena. Guardar aquí un nuevo valor lo aplica a todos los cortacéspedes. La aplicación Mammotion guarda sus propios ajustes en el teléfono: Gladys no puede leerlos."
       }
     },

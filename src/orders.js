@@ -123,7 +123,7 @@ const ORDER_MESSAGES = {
   already_starting: {
     en: 'A job is already being started, please wait.',
     fr: 'Une tâche est déjà en cours de lancement, patientez.',
-    de: 'Ein Auftrag wird bereits gestartet, bitte warten Sie.',
+    de: 'Ein Auftrag wird bereits gestartet, bitte warte.',
     es: 'Ya se está iniciando una tarea, espere por favor.',
   },
   paused: {
