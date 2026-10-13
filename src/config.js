@@ -12,6 +12,10 @@
 
 import { DEVICE_POLL_FREQUENCIES } from '@gladysassistant/integration-sdk';
 
+// Languages of the texts Gladys stores as they are (feature names, the "Status"
+// text, scene variables), offered by the manifest `language` select.
+export const LANGUAGES = ['fr', 'en', 'de', 'es'];
+
 // Bounds of the refresh interval, kept in sync with the manifest `min` / `max`.
 export const POLL_FREQUENCY_MIN = 30;
 export const POLL_FREQUENCY_MAX = 3600;
@@ -22,7 +26,7 @@ export const DEFAULT_CONFIG = {
   email: '', // Mammotion app account
   password: '',
   poll_frequency: 300, // seconds, how often each mower is refreshed
-  language: 'fr', // 'fr' | 'en', language of the "Status" text
+  language: 'fr', // one of LANGUAGES, language of the "Status" text
   // Settings of a new mowing job started from Gladys (the app keeps its own
   // settings on the phone: the mower cannot give them back).
   mowing_zones: '', // zone names, comma separated; empty = every zone of the map
@@ -108,7 +112,7 @@ export function normalizeConfig(raw = {}) {
     password: String(raw.password ?? DEFAULT_CONFIG.password),
     // Config may arrive as strings from a form: force a number within bounds.
     poll_frequency: clampPollFrequency(raw.poll_frequency ?? DEFAULT_CONFIG.poll_frequency),
-    language: raw.language === 'en' ? 'en' : DEFAULT_CONFIG.language,
+    language: LANGUAGES.includes(raw.language) ? raw.language : DEFAULT_CONFIG.language,
     mowing_zones: String(raw.mowing_zones ?? DEFAULT_CONFIG.mowing_zones).trim(),
     blade_height: clampNumber('blade_height', raw.blade_height),
     mowing_speed: clampNumber('mowing_speed', raw.mowing_speed, { integer: false }),

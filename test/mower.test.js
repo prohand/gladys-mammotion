@@ -293,4 +293,10 @@ test('feature names follow the configured language', () => {
   assert.equal(feature(fr, FEATURE.DOCK).name, 'Retour à la base');
   assert.equal(feature(fr, FEATURE.STOP).name, 'Arrêter la tâche');
   assert.equal(feature(en, FEATURE.STOP).name, 'Stop job');
+  const de = buildMowerDevice(gladys, luba, normalizeConfig({ language: 'de' }));
+  const es = buildMowerDevice(gladys, luba, normalizeConfig({ language: 'es' }));
+  assert.equal(feature(de, FEATURE.MOWING).name, 'Mähen');
+  assert.equal(feature(es, FEATURE.MOWING).name, 'Corte');
+  assert.equal(feature(de, FEATURE.DOCK).name, 'Zurück zur Ladestation');
+  assert.equal(feature(es, FEATURE.DOCK).name, 'Volver a la base');
 });

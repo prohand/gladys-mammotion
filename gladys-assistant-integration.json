@@ -4,7 +4,9 @@
   "name": "Mammotion",
   "description": {
     "en": "Control your Mammotion mower (Luba, Yuka): mowing, pause, return to dock, battery and status.",
-    "fr": "Pilotez votre tondeuse Mammotion (Luba, Yuka) : tonte, pause, retour à la base, batterie, état."
+    "fr": "Pilotez votre tondeuse Mammotion (Luba, Yuka) : tonte, pause, retour à la base, batterie, état.",
+    "de": "Steuere deinen Mammotion-Mäher (Luba, Yuka): Mähen, Pause, zurück zur Station, Akku, Status.",
+    "es": "Controle su cortacésped Mammotion (Luba, Yuka): corte, pausa, vuelta a la base, batería y estado."
   },
   "version": "1.4.1",
   "docker_image": "ghcr.io/prohand/gladys-mammotion:1.4.1",
@@ -22,18 +24,24 @@
       "type": "section",
       "label": {
         "en": "Mammotion account",
-        "fr": "Compte Mammotion"
+        "fr": "Compte Mammotion",
+        "de": "Mammotion-Konto",
+        "es": "Cuenta Mammotion"
       },
       "description": {
         "en": "Use the email and password of your Mammotion app account. Tip: create a second account, share the mower with it from the app, and use it here, so Gladys does not log you out of your phone.",
-        "fr": "Utilisez l'email et le mot de passe de votre compte de l'application Mammotion. Astuce : créez un second compte, partagez-lui la tondeuse depuis l'application et utilisez-le ici, pour que Gladys ne vous déconnecte pas de votre téléphone."
+        "fr": "Utilisez l'email et le mot de passe de votre compte de l'application Mammotion. Astuce : créez un second compte, partagez-lui la tondeuse depuis l'application et utilisez-le ici, pour que Gladys ne vous déconnecte pas de votre téléphone.",
+        "de": "Verwende die E-Mail-Adresse und das Passwort deines Kontos der Mammotion-App. Tipp: Lege ein zweites Konto an, teile den Mäher in der App mit ihm und verwende es hier, damit Gladys dich nicht auf deinem Telefon abmeldet.",
+        "es": "Utilice el correo electrónico y la contraseña de su cuenta de la aplicación Mammotion. Consejo: cree una segunda cuenta, compártale el cortacésped desde la aplicación y utilícela aquí, para que Gladys no cierre su sesión en el teléfono."
       },
       "links": [
         {
           "url": "https://mammotion.com",
           "label": {
             "en": "Mammotion website",
-            "fr": "Site Mammotion"
+            "fr": "Site Mammotion",
+            "de": "Mammotion-Website",
+            "es": "Sitio web de Mammotion"
           }
         }
       ]
@@ -43,7 +51,9 @@
       "type": "string",
       "label": {
         "en": "Email",
-        "fr": "Email"
+        "fr": "Email",
+        "de": "E-Mail",
+        "es": "Correo electrónico"
       },
       "required": true
     },
@@ -52,7 +62,9 @@
       "type": "secret",
       "label": {
         "en": "Password",
-        "fr": "Mot de passe"
+        "fr": "Mot de passe",
+        "de": "Passwort",
+        "es": "Contraseña"
       },
       "required": true
     },
@@ -61,11 +73,15 @@
       "type": "number",
       "label": {
         "en": "Refresh interval (s)",
-        "fr": "Intervalle de rafraîchissement (s)"
+        "fr": "Intervalle de rafraîchissement (s)",
+        "de": "Aktualisierungsintervall (s)",
+        "es": "Intervalo de actualización (s)"
       },
       "description": {
         "en": "How often each mower is read, in seconds. Each read asks the mower for its state, which can briefly disturb the Mammotion app: 300 s or more is advised.",
-        "fr": "Fréquence de lecture de chaque tondeuse, en secondes. Chaque lecture demande son état à la tondeuse, ce qui peut gêner un instant l'appli Mammotion : 300 s ou plus conseillé."
+        "fr": "Fréquence de lecture de chaque tondeuse, en secondes. Chaque lecture demande son état à la tondeuse, ce qui peut gêner un instant l'appli Mammotion : 300 s ou plus conseillé.",
+        "de": "Wie oft jeder Mäher gelesen wird, in Sekunden. Jede Abfrage fragt den Mäher nach seinem Zustand, was die Mammotion-App kurz stören kann: 300 s oder mehr werden empfohlen.",
+        "es": "Frecuencia de lectura de cada cortacésped, en segundos. Cada lectura le pide su estado, lo que puede molestar un momento a la aplicación Mammotion: se recomiendan 300 s o más."
       },
       "required": false,
       "default": 300,
@@ -77,7 +93,9 @@
       "type": "select",
       "label": {
         "en": "Status language",
-        "fr": "Langue de l'état"
+        "fr": "Langue de l'état",
+        "de": "Sprache des Status",
+        "es": "Idioma del estado"
       },
       "required": false,
       "default": "fr",
@@ -86,14 +104,36 @@
           "value": "fr",
           "label": {
             "en": "French",
-            "fr": "Français"
+            "fr": "Français",
+            "de": "Französisch",
+            "es": "Francés"
           }
         },
         {
           "value": "en",
           "label": {
             "en": "English",
-            "fr": "Anglais"
+            "fr": "Anglais",
+            "de": "Englisch",
+            "es": "Inglés"
+          }
+        },
+        {
+          "value": "de",
+          "label": {
+            "en": "German",
+            "fr": "Allemand",
+            "de": "Deutsch",
+            "es": "Alemán"
+          }
+        },
+        {
+          "value": "es",
+          "label": {
+            "en": "Spanish",
+            "fr": "Espagnol",
+            "de": "Spanisch",
+            "es": "Español"
           }
         }
       ]
@@ -103,11 +143,15 @@
       "type": "section",
       "label": {
         "en": "New mowing job",
-        "fr": "Nouvelle tonte"
+        "fr": "Nouvelle tonte",
+        "de": "Neuer Mähauftrag",
+        "es": "Nueva tarea de corte"
       },
       "description": {
         "en": "Settings of a new job started from Gladys (Mowing switch ON, mower docked or ready). Each mower also shows them as \"Zone to mow – …\" switches and \"Setting – …\" lists, to change them for that mower only, from the dashboard or a scene. Saving a new value here applies it to every mower. The Mammotion app keeps its own settings on the phone: Gladys cannot read them.",
-        "fr": "Réglages d'une nouvelle tonte lancée par Gladys (interrupteur Tonte sur ON, tondeuse à la base ou prête). Chaque tondeuse les affiche aussi en interrupteurs « Zone à tondre – … » et en listes « Réglage – … », pour les changer pour elle seule, depuis le tableau de bord ou une scène. Enregistrer ici une nouvelle valeur l'applique à toutes les tondeuses. L'application Mammotion garde ses réglages dans le téléphone : Gladys ne peut pas les lire."
+        "fr": "Réglages d'une nouvelle tonte lancée par Gladys (interrupteur Tonte sur ON, tondeuse à la base ou prête). Chaque tondeuse les affiche aussi en interrupteurs « Zone à tondre – … » et en listes « Réglage – … », pour les changer pour elle seule, depuis le tableau de bord ou une scène. Enregistrer ici une nouvelle valeur l'applique à toutes les tondeuses. L'application Mammotion garde ses réglages dans le téléphone : Gladys ne peut pas les lire.",
+        "de": "Einstellungen eines neuen Auftrags, der von Gladys gestartet wird (Schalter Mähen auf EIN, Mäher in der Ladestation oder bereit). Jeder Mäher zeigt sie auch als Schalter „Zu mähende Zone – …“ und als Listen „Einstellung – …“, um sie nur für diesen Mäher zu ändern, über das Dashboard oder eine Szene. Wenn du hier einen neuen Wert speicherst, gilt er für alle Mäher. Die Mammotion-App behält ihre eigenen Einstellungen auf dem Telefon: Gladys kann sie nicht lesen.",
+        "es": "Ajustes de una nueva tarea iniciada desde Gladys (interruptor Corte en ON, cortacésped en la base o listo). Cada cortacésped también los muestra como interruptores «Zona a cortar – …» y listas «Ajuste – …», para cambiarlos solo para él, desde el panel o una escena. Guardar aquí un nuevo valor lo aplica a todos los cortacéspedes. La aplicación Mammotion guarda sus propios ajustes en el teléfono: Gladys no puede leerlos."
       }
     },
     {
@@ -115,11 +159,15 @@
       "type": "string",
       "label": {
         "en": "Zones to mow",
-        "fr": "Zones à tondre"
+        "fr": "Zones à tondre",
+        "de": "Zu mähende Zonen",
+        "es": "Zonas a cortar"
       },
       "description": {
         "en": "Zone names as shown in the app, separated by commas. Empty: every zone of the map. Each mower also shows one \"Zone to mow – …\" switch per zone of its map.",
-        "fr": "Noms des zones comme dans l'application, séparés par des virgules. Vide : toutes les zones de la carte. Chaque tondeuse affiche aussi un interrupteur « Zone à tondre – … » par zone de sa carte."
+        "fr": "Noms des zones comme dans l'application, séparés par des virgules. Vide : toutes les zones de la carte. Chaque tondeuse affiche aussi un interrupteur « Zone à tondre – … » par zone de sa carte.",
+        "de": "Namen der Zonen wie in der App, durch Kommas getrennt. Leer: alle Zonen der Karte. Jeder Mäher zeigt außerdem einen Schalter „Zu mähende Zone – …“ pro Zone seiner Karte.",
+        "es": "Nombres de las zonas como en la aplicación, separados por comas. Vacío: todas las zonas del mapa. Cada cortacésped también muestra un interruptor «Zona a cortar – …» por cada zona de su mapa."
       },
       "required": false,
       "default": ""
@@ -129,11 +177,15 @@
       "type": "number",
       "label": {
         "en": "Blade height (mm)",
-        "fr": "Hauteur de coupe (mm)"
+        "fr": "Hauteur de coupe (mm)",
+        "de": "Schnitthöhe (mm)",
+        "es": "Altura de corte (mm)"
       },
       "description": {
         "en": "Kept within the range of each mower model (e.g. 25 to 70 mm on a Luba 2).",
-        "fr": "Ramenée dans la plage de chaque modèle de tondeuse (par ex. 25 à 70 mm sur une Luba 2)."
+        "fr": "Ramenée dans la plage de chaque modèle de tondeuse (par ex. 25 à 70 mm sur une Luba 2).",
+        "de": "Wird auf den Bereich des jeweiligen Mähermodells begrenzt (z. B. 25 bis 70 mm bei einem Luba 2).",
+        "es": "Se ajusta al rango de cada modelo de cortacésped (p. ej., de 25 a 70 mm en un Luba 2)."
       },
       "required": false,
       "default": 60,
@@ -145,7 +197,9 @@
       "type": "select",
       "label": {
         "en": "Speed (m/s)",
-        "fr": "Vitesse (m/s)"
+        "fr": "Vitesse (m/s)",
+        "de": "Geschwindigkeit (m/s)",
+        "es": "Velocidad (m/s)"
       },
       "required": false,
       "default": "0.6",
@@ -154,77 +208,99 @@
           "value": "0.2",
           "label": {
             "en": "0.2 m/s",
-            "fr": "0,2 m/s"
+            "fr": "0,2 m/s",
+            "de": "0,2 m/s",
+            "es": "0,2 m/s"
           }
         },
         {
           "value": "0.3",
           "label": {
             "en": "0.3 m/s",
-            "fr": "0,3 m/s"
+            "fr": "0,3 m/s",
+            "de": "0,3 m/s",
+            "es": "0,3 m/s"
           }
         },
         {
           "value": "0.4",
           "label": {
             "en": "0.4 m/s",
-            "fr": "0,4 m/s"
+            "fr": "0,4 m/s",
+            "de": "0,4 m/s",
+            "es": "0,4 m/s"
           }
         },
         {
           "value": "0.5",
           "label": {
             "en": "0.5 m/s",
-            "fr": "0,5 m/s"
+            "fr": "0,5 m/s",
+            "de": "0,5 m/s",
+            "es": "0,5 m/s"
           }
         },
         {
           "value": "0.6",
           "label": {
             "en": "0.6 m/s",
-            "fr": "0,6 m/s"
+            "fr": "0,6 m/s",
+            "de": "0,6 m/s",
+            "es": "0,6 m/s"
           }
         },
         {
           "value": "0.7",
           "label": {
             "en": "0.7 m/s",
-            "fr": "0,7 m/s"
+            "fr": "0,7 m/s",
+            "de": "0,7 m/s",
+            "es": "0,7 m/s"
           }
         },
         {
           "value": "0.8",
           "label": {
             "en": "0.8 m/s",
-            "fr": "0,8 m/s"
+            "fr": "0,8 m/s",
+            "de": "0,8 m/s",
+            "es": "0,8 m/s"
           }
         },
         {
           "value": "0.9",
           "label": {
             "en": "0.9 m/s",
-            "fr": "0,9 m/s"
+            "fr": "0,9 m/s",
+            "de": "0,9 m/s",
+            "es": "0,9 m/s"
           }
         },
         {
           "value": "1.0",
           "label": {
             "en": "1.0 m/s",
-            "fr": "1,0 m/s"
+            "fr": "1,0 m/s",
+            "de": "1,0 m/s",
+            "es": "1,0 m/s"
           }
         },
         {
           "value": "1.1",
           "label": {
             "en": "1.1 m/s",
-            "fr": "1,1 m/s"
+            "fr": "1,1 m/s",
+            "de": "1,1 m/s",
+            "es": "1,1 m/s"
           }
         },
         {
           "value": "1.2",
           "label": {
             "en": "1.2 m/s",
-            "fr": "1,2 m/s"
+            "fr": "1,2 m/s",
+            "de": "1,2 m/s",
+            "es": "1,2 m/s"
           }
         }
       ]
@@ -234,11 +310,15 @@
       "type": "number",
       "label": {
         "en": "Path spacing (cm)",
-        "fr": "Espacement des trajectoires (cm)"
+        "fr": "Espacement des trajectoires (cm)",
+        "de": "Bahnabstand (cm)",
+        "es": "Separación de las pasadas (cm)"
       },
       "description": {
         "en": "Kept within the range of each mower model (e.g. 20 to 32 cm on a Luba 2).",
-        "fr": "Ramené dans la plage de chaque modèle de tondeuse (par ex. 20 à 32 cm sur une Luba 2)."
+        "fr": "Ramené dans la plage de chaque modèle de tondeuse (par ex. 20 à 32 cm sur une Luba 2).",
+        "de": "Wird auf den Bereich des jeweiligen Mähermodells begrenzt (z. B. 20 bis 32 cm bei einem Luba 2).",
+        "es": "Se ajusta al rango de cada modelo de cortacésped (p. ej., de 20 a 32 cm en un Luba 2)."
       },
       "required": false,
       "default": 32,
@@ -250,11 +330,15 @@
       "type": "select",
       "label": {
         "en": "Path angle",
-        "fr": "Angle de coupe de la trajectoire"
+        "fr": "Angle de coupe de la trajectoire",
+        "de": "Bahnwinkel",
+        "es": "Ángulo de la trayectoria"
       },
       "description": {
         "en": "Optimal: the mower chooses. Custom: the angle below. Random: a new angle for each job.",
-        "fr": "Optimal : la tondeuse choisit. Personnaliser : l'angle ci-dessous. Aléatoire : un nouvel angle à chaque tonte."
+        "fr": "Optimal : la tondeuse choisit. Personnaliser : l'angle ci-dessous. Aléatoire : un nouvel angle à chaque tonte.",
+        "de": "Optimal: Der Mäher wählt. Benutzerdefiniert: der Winkel unten. Zufällig: ein neuer Winkel bei jedem Auftrag.",
+        "es": "Óptimo: el cortacésped elige. Personalizado: el ángulo de abajo. Aleatorio: un nuevo ángulo en cada tarea."
       },
       "required": false,
       "default": "optimal",
@@ -263,21 +347,27 @@
           "value": "optimal",
           "label": {
             "en": "Optimal",
-            "fr": "Optimal"
+            "fr": "Optimal",
+            "de": "Optimal",
+            "es": "Óptimo"
           }
         },
         {
           "value": "custom",
           "label": {
             "en": "Custom",
-            "fr": "Personnaliser"
+            "fr": "Personnaliser",
+            "de": "Benutzerdefiniert",
+            "es": "Personalizado"
           }
         },
         {
           "value": "random",
           "label": {
             "en": "Random",
-            "fr": "Aléatoire"
+            "fr": "Aléatoire",
+            "de": "Zufällig",
+            "es": "Aleatorio"
           }
         }
       ]
@@ -287,11 +377,15 @@
       "type": "number",
       "label": {
         "en": "Custom path angle (°)",
-        "fr": "Angle personnalisé (°)"
+        "fr": "Angle personnalisé (°)",
+        "de": "Benutzerdefinierter Winkel (°)",
+        "es": "Ángulo personalizado (°)"
       },
       "description": {
         "en": "Used when the path angle is \"Custom\".",
-        "fr": "Utilisé quand l'angle de coupe est « Personnaliser »."
+        "fr": "Utilisé quand l'angle de coupe est « Personnaliser ».",
+        "de": "Wird verwendet, wenn der Bahnwinkel „Benutzerdefiniert“ ist.",
+        "es": "Se utiliza cuando el ángulo de la trayectoria es «Personalizado»."
       },
       "required": false,
       "default": 111,
@@ -303,7 +397,9 @@
       "type": "select",
       "label": {
         "en": "Mowing pattern",
-        "fr": "Mode trajectoire de tonte"
+        "fr": "Mode trajectoire de tonte",
+        "de": "Mähmuster",
+        "es": "Patrón de corte"
       },
       "required": false,
       "default": "zigzag",
@@ -312,21 +408,27 @@
           "value": "zigzag",
           "label": {
             "en": "Zigzag",
-            "fr": "Trajectoire en zigzag"
+            "fr": "Trajectoire en zigzag",
+            "de": "Zickzack",
+            "es": "Zigzag"
           }
         },
         {
           "value": "chessboard",
           "label": {
             "en": "Chessboard",
-            "fr": "Damier"
+            "fr": "Damier",
+            "de": "Schachbrett",
+            "es": "Damero"
           }
         },
         {
           "value": "zigzag_adaptive",
           "label": {
             "en": "Adaptive zigzag",
-            "fr": "Zigzag adaptatif"
+            "fr": "Zigzag adaptatif",
+            "de": "Adaptiver Zickzack",
+            "es": "Zigzag adaptativo"
           }
         }
       ]
@@ -336,7 +438,9 @@
       "type": "number",
       "label": {
         "en": "Perimeter laps",
-        "fr": "Tours de tonte du périmètre"
+        "fr": "Tours de tonte du périmètre",
+        "de": "Runden am Rand",
+        "es": "Vueltas al perímetro"
       },
       "required": false,
       "default": 0,
@@ -348,7 +452,9 @@
       "type": "select",
       "label": {
         "en": "Obstacle detection",
-        "fr": "Mode détection d'obstacle"
+        "fr": "Mode détection d'obstacle",
+        "de": "Hinderniserkennung",
+        "es": "Detección de obstáculos"
       },
       "required": false,
       "default": "off",
@@ -357,21 +463,27 @@
           "value": "off",
           "label": {
             "en": "Off",
-            "fr": "Désactivé"
+            "fr": "Désactivé",
+            "de": "Aus",
+            "es": "Desactivada"
           }
         },
         {
           "value": "slow",
           "label": {
             "en": "Slow down on contact",
-            "fr": "Ralentir au contact"
+            "fr": "Ralentir au contact",
+            "de": "Bei Kontakt verlangsamen",
+            "es": "Reducir la velocidad al contacto"
           }
         },
         {
           "value": "less",
           "label": {
             "en": "Avoid contact",
-            "fr": "Éviter le contact"
+            "fr": "Éviter le contact",
+            "de": "Kontakt vermeiden",
+            "es": "Evitar el contacto"
           }
         }
       ]
@@ -381,7 +493,9 @@
       "type": "number",
       "label": {
         "en": "No-go zone laps",
-        "fr": "Tours de tonte des zones interdites"
+        "fr": "Tours de tonte des zones interdites",
+        "de": "Runden um Sperrzonen",
+        "es": "Vueltas a las zonas prohibidas"
       },
       "required": false,
       "default": 0,
@@ -393,7 +507,9 @@
       "type": "select",
       "label": {
         "en": "Path order",
-        "fr": "Ordre des itinéraires"
+        "fr": "Ordre des itinéraires",
+        "de": "Reihenfolge der Bahnen",
+        "es": "Orden de las trayectorias"
       },
       "required": false,
       "default": "zigzag_first",
@@ -402,14 +518,18 @@
           "value": "zigzag_first",
           "label": {
             "en": "Zigzag first",
-            "fr": "Zigzag d'abord"
+            "fr": "Zigzag d'abord",
+            "de": "Zuerst Zickzack",
+            "es": "Primero zigzag"
           }
         },
         {
           "value": "border_first",
           "label": {
             "en": "Perimeter first",
-            "fr": "Périmètre d'abord"
+            "fr": "Périmètre d'abord",
+            "de": "Zuerst Rand",
+            "es": "Primero el perímetro"
           }
         }
       ]
@@ -419,11 +539,15 @@
       "type": "number",
       "label": {
         "en": "Start progress (%)",
-        "fr": "Progression du démarrage (%)"
+        "fr": "Progression du démarrage (%)",
+        "de": "Startfortschritt (%)",
+        "es": "Progreso inicial (%)"
       },
       "description": {
         "en": "Start the job at this share of the zone: 0 starts from the beginning.",
-        "fr": "Commencer la tonte à ce pourcentage de la zone : 0 part du début."
+        "fr": "Commencer la tonte à ce pourcentage de la zone : 0 part du début.",
+        "de": "Den Auftrag bei diesem Anteil der Zone beginnen: 0 beginnt am Anfang.",
+        "es": "Iniciar la tarea en este porcentaje de la zona: 0 empieza desde el principio."
       },
       "required": false,
       "default": 0,
@@ -436,7 +560,9 @@
       "key": "test_connection",
       "label": {
         "en": "Test the connection",
-        "fr": "Tester la connexion"
+        "fr": "Tester la connexion",
+        "de": "Verbindung testen",
+        "es": "Probar la conexión"
       },
       "timeout_seconds": 60
     },
@@ -444,7 +570,9 @@
       "key": "refresh",
       "label": {
         "en": "Refresh the mowers now",
-        "fr": "Rafraîchir les tondeuses"
+        "fr": "Rafraîchir les tondeuses",
+        "de": "Mäher jetzt aktualisieren",
+        "es": "Actualizar los cortacéspedes ahora"
       },
       "timeout_seconds": 60
     }
@@ -454,12 +582,16 @@
       "key": "mower",
       "label": {
         "en": "Mammotion mower",
-        "fr": "Tondeuse Mammotion"
+        "fr": "Tondeuse Mammotion",
+        "de": "Mammotion-Mäher",
+        "es": "Cortacésped Mammotion"
       },
       "icon": "scissors",
       "description": {
         "en": "One mower: state, battery, job progress, and buttons to mow, pause or send it home.",
-        "fr": "Une tondeuse : état, batterie, avancement, et boutons pour tondre, mettre en pause ou rentrer."
+        "fr": "Une tondeuse : état, batterie, avancement, et boutons pour tondre, mettre en pause ou rentrer.",
+        "de": "Ein Mäher: Status, Akku, Fortschritt und Tasten zum Mähen, Pausieren oder Heimschicken.",
+        "es": "Un cortacésped: estado, batería, progreso y botones para cortar, pausar o volver a la base."
       },
       "settings": [
         {
@@ -468,7 +600,9 @@
           "source": "devices",
           "label": {
             "en": "Mower",
-            "fr": "Tondeuse"
+            "fr": "Tondeuse",
+            "de": "Mäher",
+            "es": "Cortacésped"
           },
           "required": true
         }
@@ -481,11 +615,15 @@
       "key": "mowing_started",
       "label": {
         "en": "A mower starts mowing",
-        "fr": "Une tondeuse commence à tondre"
+        "fr": "Une tondeuse commence à tondre",
+        "de": "Ein Mäher beginnt zu mähen",
+        "es": "Un cortacésped empieza a cortar"
       },
       "description": {
         "en": "A new job, or a paused one resumed (after a recharge, too).",
-        "fr": "Une nouvelle tâche, ou une tâche en pause qui reprend (après une recharge aussi)."
+        "fr": "Une nouvelle tâche, ou une tâche en pause qui reprend (après une recharge aussi).",
+        "de": "Ein neuer Auftrag oder ein pausierter, der fortgesetzt wird (auch nach dem Aufladen).",
+        "es": "Una nueva tarea, o una tarea en pausa que se reanuda (también tras una recarga)."
       },
       "fields": [
         {
@@ -494,11 +632,15 @@
           "source": "devices",
           "label": {
             "en": "Mower",
-            "fr": "Tondeuse"
+            "fr": "Tondeuse",
+            "de": "Mäher",
+            "es": "Cortacésped"
           },
           "description": {
             "en": "Leave empty for any mower.",
-            "fr": "Laissez vide pour n'importe quelle tondeuse."
+            "fr": "Laissez vide pour n'importe quelle tondeuse.",
+            "de": "Leer lassen für jeden Mäher.",
+            "es": "Déjelo vacío para cualquier cortacésped."
           }
         }
       ],
@@ -508,7 +650,9 @@
           "type": "string",
           "label": {
             "en": "Mower name",
-            "fr": "Nom de la tondeuse"
+            "fr": "Nom de la tondeuse",
+            "de": "Name des Mähers",
+            "es": "Nombre del cortacésped"
           }
         },
         {
@@ -516,7 +660,9 @@
           "type": "string",
           "label": {
             "en": "State",
-            "fr": "État"
+            "fr": "État",
+            "de": "Status",
+            "es": "Estado"
           }
         },
         {
@@ -524,7 +670,9 @@
           "type": "number",
           "label": {
             "en": "Battery (%)",
-            "fr": "Batterie (%)"
+            "fr": "Batterie (%)",
+            "de": "Akku (%)",
+            "es": "Batería (%)"
           }
         },
         {
@@ -532,7 +680,9 @@
           "type": "boolean",
           "label": {
             "en": "Resumed",
-            "fr": "Reprise"
+            "fr": "Reprise",
+            "de": "Fortgesetzt",
+            "es": "Reanudada"
           }
         }
       ]
@@ -541,11 +691,15 @@
       "key": "job_ended",
       "label": {
         "en": "A mowing job ends",
-        "fr": "Une tâche de tonte se termine"
+        "fr": "Une tâche de tonte se termine",
+        "de": "Ein Mähauftrag endet",
+        "es": "Una tarea de corte termina"
       },
       "description": {
         "en": "Finished or stopped. A recharge in the middle of a job does not end it.",
-        "fr": "Terminée ou arrêtée. Une recharge au milieu d'une tâche ne la termine pas."
+        "fr": "Terminée ou arrêtée. Une recharge au milieu d'une tâche ne la termine pas.",
+        "de": "Abgeschlossen oder beendet. Ein Aufladen mitten im Auftrag beendet ihn nicht.",
+        "es": "Terminada o detenida. Una recarga en medio de una tarea no la termina."
       },
       "fields": [
         {
@@ -554,11 +708,15 @@
           "source": "devices",
           "label": {
             "en": "Mower",
-            "fr": "Tondeuse"
+            "fr": "Tondeuse",
+            "de": "Mäher",
+            "es": "Cortacésped"
           },
           "description": {
             "en": "Leave empty for any mower.",
-            "fr": "Laissez vide pour n'importe quelle tondeuse."
+            "fr": "Laissez vide pour n'importe quelle tondeuse.",
+            "de": "Leer lassen für jeden Mäher.",
+            "es": "Déjelo vacío para cualquier cortacésped."
           }
         }
       ],
@@ -568,7 +726,9 @@
           "type": "string",
           "label": {
             "en": "Mower name",
-            "fr": "Nom de la tondeuse"
+            "fr": "Nom de la tondeuse",
+            "de": "Name des Mähers",
+            "es": "Nombre del cortacésped"
           }
         },
         {
@@ -576,7 +736,9 @@
           "type": "string",
           "label": {
             "en": "State",
-            "fr": "État"
+            "fr": "État",
+            "de": "Status",
+            "es": "Estado"
           }
         },
         {
@@ -584,7 +746,9 @@
           "type": "number",
           "label": {
             "en": "Battery (%)",
-            "fr": "Batterie (%)"
+            "fr": "Batterie (%)",
+            "de": "Akku (%)",
+            "es": "Batería (%)"
           }
         },
         {
@@ -592,7 +756,9 @@
           "type": "number",
           "label": {
             "en": "Progress (%)",
-            "fr": "Avancement (%)"
+            "fr": "Avancement (%)",
+            "de": "Fortschritt (%)",
+            "es": "Progreso (%)"
           }
         }
       ]
@@ -601,11 +767,15 @@
       "key": "docked",
       "label": {
         "en": "A mower is back on its dock",
-        "fr": "Une tondeuse est de retour sur sa base"
+        "fr": "Une tondeuse est de retour sur sa base",
+        "de": "Ein Mäher ist zurück in seiner Ladestation",
+        "es": "Un cortacésped vuelve a su base"
       },
       "description": {
         "en": "It starts charging, job finished or paused to recharge.",
-        "fr": "Elle commence à charger, tâche terminée ou en pause pour recharger."
+        "fr": "Elle commence à charger, tâche terminée ou en pause pour recharger.",
+        "de": "Er beginnt zu laden, Auftrag abgeschlossen oder zum Aufladen pausiert.",
+        "es": "Empieza a cargar, con la tarea terminada o en pausa para recargar."
       },
       "fields": [
         {
@@ -614,11 +784,15 @@
           "source": "devices",
           "label": {
             "en": "Mower",
-            "fr": "Tondeuse"
+            "fr": "Tondeuse",
+            "de": "Mäher",
+            "es": "Cortacésped"
           },
           "description": {
             "en": "Leave empty for any mower.",
-            "fr": "Laissez vide pour n'importe quelle tondeuse."
+            "fr": "Laissez vide pour n'importe quelle tondeuse.",
+            "de": "Leer lassen für jeden Mäher.",
+            "es": "Déjelo vacío para cualquier cortacésped."
           }
         }
       ],
@@ -628,7 +802,9 @@
           "type": "string",
           "label": {
             "en": "Mower name",
-            "fr": "Nom de la tondeuse"
+            "fr": "Nom de la tondeuse",
+            "de": "Name des Mähers",
+            "es": "Nombre del cortacésped"
           }
         },
         {
@@ -636,7 +812,9 @@
           "type": "string",
           "label": {
             "en": "State",
-            "fr": "État"
+            "fr": "État",
+            "de": "Status",
+            "es": "Estado"
           }
         },
         {
@@ -644,7 +822,9 @@
           "type": "number",
           "label": {
             "en": "Battery (%)",
-            "fr": "Batterie (%)"
+            "fr": "Batterie (%)",
+            "de": "Akku (%)",
+            "es": "Batería (%)"
           }
         },
         {
@@ -652,7 +832,9 @@
           "type": "boolean",
           "label": {
             "en": "Job paused to recharge",
-            "fr": "Tâche en pause pour recharger"
+            "fr": "Tâche en pause pour recharger",
+            "de": "Auftrag zum Aufladen pausiert",
+            "es": "Tarea en pausa para recargar"
           }
         }
       ]
@@ -661,11 +843,15 @@
       "key": "mower_problem",
       "label": {
         "en": "A mower has a problem",
-        "fr": "Une tondeuse a un problème"
+        "fr": "Une tondeuse a un problème",
+        "de": "Ein Mäher hat ein Problem",
+        "es": "Un cortacésped tiene un problema"
       },
       "description": {
         "en": "Offline, location error, out of its boundary, locked, or a failed update.",
-        "fr": "Hors ligne, erreur de position, hors zone, verrouillée, ou mise à jour échouée."
+        "fr": "Hors ligne, erreur de position, hors zone, verrouillée, ou mise à jour échouée.",
+        "de": "Offline, Positionsfehler, außerhalb seiner Zone, gesperrt oder fehlgeschlagene Aktualisierung.",
+        "es": "Sin conexión, error de posición, fuera de su zona, bloqueado o actualización fallida."
       },
       "fields": [
         {
@@ -674,11 +860,15 @@
           "source": "devices",
           "label": {
             "en": "Mower",
-            "fr": "Tondeuse"
+            "fr": "Tondeuse",
+            "de": "Mäher",
+            "es": "Cortacésped"
           },
           "description": {
             "en": "Leave empty for any mower.",
-            "fr": "Laissez vide pour n'importe quelle tondeuse."
+            "fr": "Laissez vide pour n'importe quelle tondeuse.",
+            "de": "Leer lassen für jeden Mäher.",
+            "es": "Déjelo vacío para cualquier cortacésped."
           }
         },
         {
@@ -686,46 +876,60 @@
           "type": "multi_select",
           "label": {
             "en": "Problem",
-            "fr": "Problème"
+            "fr": "Problème",
+            "de": "Problem",
+            "es": "Problema"
           },
           "description": {
             "en": "Leave empty for any problem.",
-            "fr": "Laissez vide pour n'importe quel problème."
+            "fr": "Laissez vide pour n'importe quel problème.",
+            "de": "Leer lassen für jedes Problem.",
+            "es": "Déjelo vacío para cualquier problema."
           },
           "options": [
             {
               "value": "offline",
               "label": {
                 "en": "Offline",
-                "fr": "Hors ligne"
+                "fr": "Hors ligne",
+                "de": "Offline",
+                "es": "Sin conexión"
               }
             },
             {
               "value": "location_error",
               "label": {
                 "en": "Location error",
-                "fr": "Erreur de position"
+                "fr": "Erreur de position",
+                "de": "Positionsfehler",
+                "es": "Error de posición"
               }
             },
             {
               "value": "out_of_boundary",
               "label": {
                 "en": "Out of boundary",
-                "fr": "Hors zone"
+                "fr": "Hors zone",
+                "de": "Außerhalb der Zone",
+                "es": "Fuera de zona"
               }
             },
             {
               "value": "locked",
               "label": {
                 "en": "Locked",
-                "fr": "Verrouillée"
+                "fr": "Verrouillée",
+                "de": "Gesperrt",
+                "es": "Bloqueado"
               }
             },
             {
               "value": "update_failed",
               "label": {
                 "en": "Update failed",
-                "fr": "Échec de mise à jour"
+                "fr": "Échec de mise à jour",
+                "de": "Aktualisierung fehlgeschlagen",
+                "es": "Error de actualización"
               }
             }
           ]
@@ -737,7 +941,9 @@
           "type": "string",
           "label": {
             "en": "Mower name",
-            "fr": "Nom de la tondeuse"
+            "fr": "Nom de la tondeuse",
+            "de": "Name des Mähers",
+            "es": "Nombre del cortacésped"
           }
         },
         {
@@ -745,7 +951,9 @@
           "type": "string",
           "label": {
             "en": "State",
-            "fr": "État"
+            "fr": "État",
+            "de": "Status",
+            "es": "Estado"
           }
         },
         {
@@ -753,7 +961,9 @@
           "type": "number",
           "label": {
             "en": "Battery (%)",
-            "fr": "Batterie (%)"
+            "fr": "Batterie (%)",
+            "de": "Akku (%)",
+            "es": "Batería (%)"
           }
         },
         {
@@ -761,7 +971,9 @@
           "type": "string",
           "label": {
             "en": "Problem",
-            "fr": "Problème"
+            "fr": "Problème",
+            "de": "Problem",
+            "es": "Problema"
           }
         }
       ]
@@ -772,11 +984,15 @@
       "key": "start_mowing",
       "label": {
         "en": "Start mowing",
-        "fr": "Lancer la tonte"
+        "fr": "Lancer la tonte",
+        "de": "Mähen starten",
+        "es": "Iniciar el corte"
       },
       "description": {
         "en": "Starts a job with the zones and settings chosen in Gladys, or resumes a paused one.",
-        "fr": "Lance une tâche avec les zones et réglages choisis dans Gladys, ou reprend une tâche en pause."
+        "fr": "Lance une tâche avec les zones et réglages choisis dans Gladys, ou reprend une tâche en pause.",
+        "de": "Startet einen Auftrag mit den in Gladys gewählten Zonen und Einstellungen oder setzt einen pausierten fort.",
+        "es": "Inicia una tarea con las zonas y ajustes elegidos en Gladys, o reanuda una tarea en pausa."
       },
       "timeout_seconds": 30,
       "fields": [
@@ -786,7 +1002,9 @@
           "source": "devices",
           "label": {
             "en": "Mower",
-            "fr": "Tondeuse"
+            "fr": "Tondeuse",
+            "de": "Mäher",
+            "es": "Cortacésped"
           },
           "required": true
         }
@@ -797,7 +1015,9 @@
           "type": "string",
           "label": {
             "en": "Result",
-            "fr": "Résultat"
+            "fr": "Résultat",
+            "de": "Ergebnis",
+            "es": "Resultado"
           }
         }
       ]
@@ -806,11 +1026,15 @@
       "key": "pause_mowing",
       "label": {
         "en": "Pause mowing",
-        "fr": "Mettre la tonte en pause"
+        "fr": "Mettre la tonte en pause",
+        "de": "Mähen pausieren",
+        "es": "Pausar el corte"
       },
       "description": {
         "en": "Pauses the current job.",
-        "fr": "Met la tâche en cours en pause."
+        "fr": "Met la tâche en cours en pause.",
+        "de": "Pausiert den laufenden Auftrag.",
+        "es": "Pone en pausa la tarea en curso."
       },
       "timeout_seconds": 30,
       "fields": [
@@ -820,7 +1044,9 @@
           "source": "devices",
           "label": {
             "en": "Mower",
-            "fr": "Tondeuse"
+            "fr": "Tondeuse",
+            "de": "Mäher",
+            "es": "Cortacésped"
           },
           "required": true
         }
@@ -831,7 +1057,9 @@
           "type": "string",
           "label": {
             "en": "Result",
-            "fr": "Résultat"
+            "fr": "Résultat",
+            "de": "Ergebnis",
+            "es": "Resultado"
           }
         }
       ]
@@ -840,11 +1068,15 @@
       "key": "return_to_dock",
       "label": {
         "en": "Send a mower back to its dock",
-        "fr": "Renvoyer une tondeuse à sa base"
+        "fr": "Renvoyer une tondeuse à sa base",
+        "de": "Mäher zur Ladestation zurückschicken",
+        "es": "Enviar un cortacésped a su base"
       },
       "description": {
         "en": "The job, if any, is kept paused.",
-        "fr": "La tâche éventuelle est gardée en pause."
+        "fr": "La tâche éventuelle est gardée en pause.",
+        "de": "Ein laufender Auftrag bleibt pausiert.",
+        "es": "La tarea, si la hay, queda en pausa."
       },
       "timeout_seconds": 30,
       "fields": [
@@ -854,7 +1086,9 @@
           "source": "devices",
           "label": {
             "en": "Mower",
-            "fr": "Tondeuse"
+            "fr": "Tondeuse",
+            "de": "Mäher",
+            "es": "Cortacésped"
           },
           "required": true
         }
@@ -865,7 +1099,9 @@
           "type": "string",
           "label": {
             "en": "Result",
-            "fr": "Résultat"
+            "fr": "Résultat",
+            "de": "Ergebnis",
+            "es": "Resultado"
           }
         }
       ]
@@ -874,11 +1110,15 @@
       "key": "get_mower_status",
       "label": {
         "en": "Read a mower",
-        "fr": "Lire une tondeuse"
+        "fr": "Lire une tondeuse",
+        "de": "Mäher auslesen",
+        "es": "Leer un cortacésped"
       },
       "description": {
         "en": "Hands the state of the mower to the next steps of the scene.",
-        "fr": "Passe l'état de la tondeuse aux étapes suivantes de la scène."
+        "fr": "Passe l'état de la tondeuse aux étapes suivantes de la scène.",
+        "de": "Übergibt den Zustand des Mähers an die nächsten Schritte der Szene.",
+        "es": "Pasa el estado del cortacésped a los siguientes pasos de la escena."
       },
       "timeout_seconds": 45,
       "fields": [
@@ -888,7 +1128,9 @@
           "source": "devices",
           "label": {
             "en": "Mower",
-            "fr": "Tondeuse"
+            "fr": "Tondeuse",
+            "de": "Mäher",
+            "es": "Cortacésped"
           },
           "required": true
         },
@@ -897,11 +1139,15 @@
           "type": "boolean",
           "label": {
             "en": "Ask the mower first",
-            "fr": "Interroger la tondeuse d'abord"
+            "fr": "Interroger la tondeuse d'abord",
+            "de": "Zuerst den Mäher abfragen",
+            "es": "Consultar primero al cortacésped"
           },
           "description": {
             "en": "Otherwise the last state received is used.",
-            "fr": "Sinon, le dernier état reçu est utilisé."
+            "fr": "Sinon, le dernier état reçu est utilisé.",
+            "de": "Andernfalls wird der zuletzt empfangene Zustand verwendet.",
+            "es": "Si no, se utiliza el último estado recibido."
           },
           "default": false
         }
@@ -912,7 +1158,9 @@
           "type": "string",
           "label": {
             "en": "Mower name",
-            "fr": "Nom de la tondeuse"
+            "fr": "Nom de la tondeuse",
+            "de": "Name des Mähers",
+            "es": "Nombre del cortacésped"
           }
         },
         {
@@ -920,7 +1168,9 @@
           "type": "string",
           "label": {
             "en": "State",
-            "fr": "État"
+            "fr": "État",
+            "de": "Status",
+            "es": "Estado"
           }
         },
         {
@@ -928,7 +1178,9 @@
           "type": "boolean",
           "label": {
             "en": "Online",
-            "fr": "En ligne"
+            "fr": "En ligne",
+            "de": "Online",
+            "es": "En línea"
           }
         },
         {
@@ -936,7 +1188,9 @@
           "type": "boolean",
           "label": {
             "en": "Mowing",
-            "fr": "En tonte"
+            "fr": "En tonte",
+            "de": "Mäht",
+            "es": "Cortando"
           }
         },
         {
@@ -944,7 +1198,9 @@
           "type": "boolean",
           "label": {
             "en": "On or going to the dock",
-            "fr": "Sur la base ou en route"
+            "fr": "Sur la base ou en route",
+            "de": "In oder auf dem Weg zur Ladestation",
+            "es": "En la base o de camino"
           }
         },
         {
@@ -952,7 +1208,9 @@
           "type": "number",
           "label": {
             "en": "Battery (%)",
-            "fr": "Batterie (%)"
+            "fr": "Batterie (%)",
+            "de": "Akku (%)",
+            "es": "Batería (%)"
           }
         },
         {
@@ -960,7 +1218,9 @@
           "type": "number",
           "label": {
             "en": "Progress (%)",
-            "fr": "Avancement (%)"
+            "fr": "Avancement (%)",
+            "de": "Fortschritt (%)",
+            "es": "Progreso (%)"
           }
         },
         {
@@ -968,7 +1228,9 @@
           "type": "number",
           "label": {
             "en": "Remaining (min)",
-            "fr": "Restant (min)"
+            "fr": "Restant (min)",
+            "de": "Verbleibend (min)",
+            "es": "Restante (min)"
           }
         },
         {
@@ -976,7 +1238,9 @@
           "type": "string",
           "label": {
             "en": "Problem",
-            "fr": "Problème"
+            "fr": "Problème",
+            "de": "Problem",
+            "es": "Problema"
           }
         }
       ]

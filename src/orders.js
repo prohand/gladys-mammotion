@@ -102,22 +102,66 @@ export function orderResult(key, value, command) {
 
 // What the widget buttons answer, per result.
 const ORDER_MESSAGES = {
-  started: { en: 'Mowing started.', fr: 'Tonte lancée.' },
-  resumed: { en: 'Mowing resumed.', fr: 'Tonte reprise.' },
-  already_mowing: { en: 'Already mowing.', fr: 'Déjà en tonte.' },
+  started: {
+    en: 'Mowing started.',
+    fr: 'Tonte lancée.',
+    de: 'Mähen gestartet.',
+    es: 'Corte iniciado.',
+  },
+  resumed: {
+    en: 'Mowing resumed.',
+    fr: 'Tonte reprise.',
+    de: 'Mähen fortgesetzt.',
+    es: 'Corte reanudado.',
+  },
+  already_mowing: {
+    en: 'Already mowing.',
+    fr: 'Déjà en tonte.',
+    de: 'Mäht bereits.',
+    es: 'Ya está cortando.',
+  },
   already_starting: {
     en: 'A job is already being started, please wait.',
     fr: 'Une tâche est déjà en cours de lancement, patientez.',
+    de: 'Ein Auftrag wird bereits gestartet, bitte warte.',
+    es: 'Ya se está iniciando una tarea, espere por favor.',
   },
-  paused: { en: 'Mowing paused.', fr: 'Tonte en pause.' },
-  not_mowing: { en: 'Not mowing.', fr: 'Pas en tonte.' },
-  returning: { en: 'Returning to the dock.', fr: 'Retour à la base.' },
-  already_docked: { en: 'Already on the dock.', fr: 'Déjà sur la base.' },
+  paused: {
+    en: 'Mowing paused.',
+    fr: 'Tonte en pause.',
+    de: 'Mähen pausiert.',
+    es: 'Corte en pausa.',
+  },
+  not_mowing: {
+    en: 'Not mowing.',
+    fr: 'Pas en tonte.',
+    de: 'Mäht gerade nicht.',
+    es: 'No está cortando.',
+  },
+  returning: {
+    en: 'Returning to the dock.',
+    fr: 'Retour à la base.',
+    de: 'Rückkehr zur Ladestation.',
+    es: 'Volviendo a la base.',
+  },
+  already_docked: {
+    en: 'Already on the dock.',
+    fr: 'Déjà sur la base.',
+    de: 'Bereits in der Ladestation.',
+    es: 'Ya está en la base.',
+  },
 };
 
 /** The message a widget button shows for a result. */
 export function orderMessage(result) {
-  return ORDER_MESSAGES[result] ?? { en: 'Order sent.', fr: 'Ordre envoyé.' };
+  return (
+    ORDER_MESSAGES[result] ?? {
+      en: 'Order sent.',
+      fr: 'Ordre envoyé.',
+      de: 'Befehl gesendet.',
+      es: 'Orden enviada.',
+    }
+  );
 }
 
 /**
@@ -125,10 +169,10 @@ export function orderMessage(result) {
  * out of reach must not leave the others stale), then say which ones failed.
  * Throws when any failed: the Configuration screen shows a resolved action in
  * green and a thrown one in red, and a failed read needs the user's attention.
- * A thrown error reaches Gladys as text, hence both languages in one string.
+ * A thrown error reaches Gladys as text, hence every language in one string.
  * @param {Array<{ name: string }>} mowers
  * @param {(mower: object) => Promise<void>} read
- * @returns {Promise<{ en: string, fr: string }>}
+ * @returns {Promise<{ en: string, fr: string, de: string, es: string }>}
  */
 export async function refreshAll(mowers, read) {
   const results = await Promise.allSettled(mowers.map((mower) => read(mower)));
@@ -141,11 +185,15 @@ export async function refreshAll(mowers, read) {
     const list = failed.join(', ');
     throw new Error(
       `${done}/${mowers.length} mower(s) refreshed, failed: ${list} / ` +
-        `${done}/${mowers.length} tondeuse(s) rafraîchie(s), en échec : ${list}`,
+        `${done}/${mowers.length} tondeuse(s) rafraîchie(s), en échec : ${list} / ` +
+        `${done}/${mowers.length} Mäher aktualisiert, fehlgeschlagen: ${list} / ` +
+        `${done}/${mowers.length} cortacésped(es) actualizado(s), con error: ${list}`,
     );
   }
   return {
     en: `${mowers.length} mower(s) refreshed.`,
     fr: `${mowers.length} tondeuse(s) rafraîchie(s).`,
+    de: `${mowers.length} Mäher aktualisiert.`,
+    es: `${mowers.length} cortacésped(es) actualizado(s).`,
   };
 }

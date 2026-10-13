@@ -47,7 +47,7 @@ Each mower of your Mammotion account shows up with:
 > - A choice in a list applies to that mower only.
 > - Saving a **new** value in the configuration applies it to every mower.
 > - The zone switches show up once the map is read (when the integration
->   starts, mower on), after **Update** in the **Discovery** tab.
+>   starts, mower on), after **Update** in the **Discover** tab.
 
 > **Start mowing** from Gladys (mower "Ready", on its dock or not), the way
 > Home Assistant does:
@@ -72,7 +72,7 @@ Each mower of your Mammotion account shows up with:
    state, which can briefly disturb the Mammotion app: keep 300 s or more.
 4. Save, then click **Test the connection**: the number of mowers found is
    displayed.
-5. Add your mowers from the **Discovery** tab. After an update of the
+5. Add your mowers from the **Discover** tab. After an update of the
    integration, click **Update** in this tab to get the new features (the
    Refresh button for instance).
 
@@ -98,7 +98,7 @@ same yes/no value, same use in a scene, no false alert.
 
 ### "Mammotion mower" widget
 
-In **Dashboard → Edit → Add a widget**, choose **Mammotion mower**, then the
+In **Dashboard → Edit → New widget**, choose **Mammotion mower**, then the
 mower. The widget shows the state, the battery, the progress and remaining time
 of the job, and the buttons that make sense now: **Start mowing** (or
 **Resume**), **Pause**, **Back to dock**. It shows the last state received:
@@ -145,13 +145,13 @@ starts nothing and answers `already_starting`.
 
 ## Troubleshooting
 
-- **No "Setting – …" lists on the mower**: **Discovery** tab, **Update**
+- **No "Setting – …" lists on the mower**: **Discover** tab, **Update**
   button on the mower.
 - **No "Zone to mow – …" switch, or the map says "Map not read yet"**: the
   mower has not sent its map yet (off, offline). It is read again at the next
   start of the integration and with each job started from Gladys. Then
-  **Update** in the **Discovery** tab.
-- **Show the map**: **Discovery** tab, add the "<mower> – Map" device, then
+  **Update** in the **Discover** tab.
+- **Show the map**: **Discover** tab, add the "<mower> – Map" device, then
   on the dashboard add a **Camera** widget and pick that device. The image follows the mower during a job (at most every 15 s).
 - **Check a setting of the app**: start a job from the Mammotion app, then
   look for "route settings seen" in the logs of the integration. The line
@@ -175,7 +175,7 @@ starts nothing and answers `already_starting`.
   is full: that was the old **Charging** feature, filed in the battery
   category, which holds 0 whenever the mower is not charging. The new
   **Charging** feature is a binary input. The old one stays on the mowers
-  added before: open the **Discovery** tab and click **Update** on the mower —
+  added before: open the **Discover** tab and click **Update** on the mower —
   Gladys deletes the features that are no longer published, and the alert
   stops.
 - For details, read the integration logs with `LOG_LEVEL=debug`.

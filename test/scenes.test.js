@@ -220,6 +220,35 @@ test('the mower card is rendered by the core exactly as sent, in every state', (
   assert.deepEqual(validateWidgetContent(messageContent({ en: 'x', fr: 'x' })), []);
 });
 
+test('every text of the card exists in English, French, German and Spanish', () => {
+  const texts = [];
+  const collect = (value) => {
+    if (Array.isArray(value)) value.forEach(collect);
+    else if (value && typeof value === 'object') {
+      if (typeof value.en === 'string') texts.push(value);
+      else Object.values(value).forEach(collect);
+    }
+  };
+  for (const s of [
+    null,
+    status(WORK_MODES.WORKING, { progressPercent: 42, remainingMinutes: 75 }),
+    status(WORK_MODES.PAUSE, { progressPercent: 42, remainingMinutes: 20 }),
+    status(WORK_MODES.CHARGING, { charging: true }),
+    status(WORK_MODES.LOCATION_ERROR),
+    status(99),
+  ]) {
+    collect(buildMowerWidget('Luba', s).components);
+  }
+  assert.ok(texts.length > 10);
+  for (const text of texts) {
+    assert.deepEqual(Object.keys(text).sort(), ['de', 'en', 'es', 'fr'], JSON.stringify(text));
+    assert.ok(
+      Object.values(text).every((v) => v.length > 0),
+      JSON.stringify(text),
+    );
+  }
+});
+
 test('the card offers the order that makes sense now', () => {
   const buttons = (s) =>
     buildMowerWidget('Luba', s)

@@ -99,15 +99,16 @@ Deux boutons sont aussi disponibles dans l'écran de configuration :
 Avec Gladys 5.1 : un widget **Tondeuse Mammotion**, quatre déclencheurs de
 scène (tonte commencée, tâche terminée, retour à la base, problème) et quatre
 actions de scène (lancer, mettre en pause, renvoyer à la base, lire l'état).
-Détails dans `docs/fr.md`.
+Détails dans `docs/fr.md` (aussi en anglais, allemand et espagnol : `docs/en.md`,
+`docs/de.md`, `docs/es.md`).
 
 ## Configuration
 
-| Champ                              | Description                                           |
-| ---------------------------------- | ----------------------------------------------------- |
-| Email / Mot de passe               | compte de l'application Mammotion                     |
-| Intervalle de rafraîchissement (s) | `poll_frequency` : fréquence de lecture (30 à 3600 s) |
-| Langue de l'état                   | langue du texte « État » (français ou anglais)        |
+| Champ                              | Description                                                        |
+| ---------------------------------- | ------------------------------------------------------------------ |
+| Email / Mot de passe               | compte de l'application Mammotion                                  |
+| Intervalle de rafraîchissement (s) | `poll_frequency` : fréquence de lecture (30 à 3600 s)              |
+| Langue de l'état                   | langue du texte « État » (français, anglais, allemand ou espagnol) |
 
 > Conseil : créez un second compte Mammotion, partagez-lui la tondeuse depuis
 > l'application, et utilisez ce compte dans Gladys. Sinon l'application sur

@@ -1,0 +1,205 @@
+# Mammotion
+
+Steuere deinen Mammotion-Mähroboter (Luba, Luba 2, Luba mini, Yuka…) über
+Gladys: Mähen starten, pausieren und fortsetzen, den Mäher zur Ladestation
+zurückschicken und Akku, Status und Mähfortschritt verfolgen.
+
+## Was du erhältst
+
+Jeder Mäher deines Mammotion-Kontos erscheint mit:
+
+- **Mähen** (Schalter): ein = einen Auftrag starten (oder den pausierten
+  fortsetzen), aus = pausieren;
+- **Zurück zur Ladestation** (Schalter): ein = zum Laden zur Ladestation
+  zurückkehren, aus = abbrechen. Wie „Aufladen“ in der App: Ein laufender
+  Auftrag bleibt pausiert, **Mähen** setzt ihn später fort;
+- **Auftrag beenden** (Taste): beendet den Auftrag, der Mäher bleibt, wo er
+  ist (wie „Stopp“ in der App). **Zurück zur Ladestation** bringt ihn dann
+  nach Hause;
+- **Aktualisieren** (Taste): fragt den Mäher sofort nach seinem Zustand;
+- **Status**: Mäht (45 %), Lädt, Pausiert, Kehrt zur Ladestation zurück,
+  Offline…;
+- **Akku** (%) und **Lädt**;
+- **Schnitthöhe** (mm);
+- während eines Auftrags: **Mähfortschritt** (%), **Vergangene** und
+  **Verbleibende Mähzeit** (min), **Zu mähende Fläche** (m²);
+- **Gesamte Mähzeit** (h), **Gesamtstrecke** (km);
+- **Karte**: ein eigenes Gerät, „<Mäher> – Karte“ (Bild, Widget **Kamera**
+  des Dashboards): die Zonen (hellgrün = Zonen des nächsten Auftrags,
+  blassgrün = die anderen) mit ihrem Namen, die Sperrzonen (grau) und der
+  Mäher (roter Punkt);
+- die **Zonen des nächsten Auftrags**: ein Schalter „Zu mähende Zone – …“ pro
+  Zone der Karte. Mehrere Zonen können eingeschaltet sein; keine eingeschaltet
+  = alle Zonen. Die Zonen werden in der Reihenfolge gemäht, in der sie
+  eingeschaltet wurden, wie in der App;
+- die **weiteren Einstellungen des nächsten Auftrags**, „Einstellung – …“:
+  Listen für Schnitthöhe, Geschwindigkeit, Bahnabstand, Winkelart (optimal,
+  benutzerdefiniert, zufällig), Mähmuster (Zickzack, Schachbrett, adaptiver
+  Zickzack), Runden am Rand, Hinderniserkennung, Runden um Sperrzonen (0 bis 3)
+  und Reihenfolge; Schieberegler für den benutzerdefinierten Winkel (0 bis
+  180°, wie in der App) und den Startfortschritt (0 bis 99 %). Die Listen
+  folgen den Bereichen des Modells: bei einem Luba 2 X zum Beispiel Höhe von
+  25 bis 70 mm in Schritten von 5, Geschwindigkeit von 0,2 bis 0,8 m/s,
+  Bahnabstand von 20 bis 35 cm.
+- **Zonen ohne Namen** in der App heißen wie in der App („Zone 1“,
+  „Zone 4“…).
+
+> **Einstellungen am Gerät** (wie bei der Dreame-Integration): Wähle die
+> Zonen und die Werte in den Listen des Mähers (Dashboard oder Szene) und
+> schalte dann **Mähen** ein: Der Auftrag startet mit diesen
+> Einstellungen.
+>
+> - Zu Beginn übernehmen die Listen den Abschnitt „Neuer Mähauftrag“ der
+>   Konfiguration.
+> - Eine Auswahl in einer Liste gilt nur für diesen Mäher.
+> - Wenn du in der Konfiguration einen **neuen** Wert speichern, gilt er für
+>   alle Mäher.
+> - Die Zonenschalter erscheinen, sobald die Karte gelesen ist (beim Start der
+>   Integration, Mäher eingeschaltet), nach **Aktualisieren** im Tab
+>   **Entdecken**.
+
+> **Mähen starten** über Gladys (Mäher „Bereit“, in der Ladestation oder
+> nicht), so wie Home Assistant es macht:
+>
+> - ein Auftrag, der unterwegs angehalten hat (Akku, Regen…), wird dort
+>   fortgesetzt, wo er war;
+> - andernfalls plant Gladys eine Route über **alle Zonen** der Karte (mit oder
+>   ohne Namen) oder über die in „Zu mähende Zone – …“ eingeschalteten, mit den
+>   Einstellungen des Abschnitts „Neuer Mähauftrag“ der Konfiguration (Höhe,
+>   Geschwindigkeit, Bahnabstand, Winkel, Mähmuster, Runden am Rand,
+>   Hinderniserkennung…), und startet dann den Auftrag.
+>
+> Die Mammotion-App behält ihre Einstellungen auf dem Telefon: Gladys kann sie
+> nicht lesen, trage sie in seiner Konfiguration ein. Das funktioniert mit
+> den Mähern des Mammotion-Brokers (neuere Luba 2, Luba mini, Yuka…), nicht
+> mit dem Luba 1.
+
+## Konfiguration
+
+1. Öffne den Tab **Konfiguration** der Integration.
+2. Gib die **E-Mail-Adresse** und das **Passwort** deines Kontos der
+   Mammotion-App ein.
+3. Lege das **Aktualisierungsintervall** fest (standardmäßig 300 s,
+   zwischen 30 und 3600 s): wie oft Gladys den Status des Mähers liest. Jede
+   Abfrage fragt den Mäher nach seinem Zustand, was die Mammotion-App kurz
+   stören kann: Behalte 300 s oder mehr bei.
+4. Speichere und klicke dann auf **Verbindung testen**: Die Anzahl der
+   gefundenen Mäher wird angezeigt.
+5. Füge deine Mäher über den Tab **Entdecken** hinzu. Klicke nach
+   einem Update der Integration in diesem Tab auf **Aktualisieren**, um die
+   neuen Funktionen zu erhalten (zum Beispiel die Taste Aktualisieren).
+
+Die Funktion **Lädt** ist absichtlich **nicht** in der Kategorie Akku. Gladys
+warnt „Akkustand unter X %“ für **jede Funktion der Kategorie Akku** unterhalb
+des Schwellenwerts, unabhängig von ihrem Typ: Eine Ladefunktion hat den Wert 0
+oder 1 und wurde daher als „0 %“ gelesen. Sie wird stattdessen als **binärer
+Eingang** veröffentlicht: gleicher Ja/Nein-Wert, gleiche Verwendung in einer
+Szene, kein Fehlalarm.
+
+> Tipp: Lege ein zweites Mammotion-Konto an, teile den Mäher in der
+> App mit ihm und verwende dieses Konto hier. Andernfalls kann die App auf
+> deinem Telefon abgemeldet werden, wenn Gladys sich verbindet.
+
+> Sicherheit: Die neueren Mäher melden sich über den MQTT-Broker von
+> Mammotion, und dessen TLS-Zertifikat wird **nicht geprüft** (wie bei der
+> Mammotion-App und den anderen Open-Source-Clients: Vom Broker ist nicht
+> bekannt, dass er ein Zertifikat vorlegt, das eine Standardprüfung
+> akzeptiert). Wer den Datenverkehr deines Netzwerks abfangen kann, könnte sich
+> als Broker ausgeben und das kurzlebige Zugriffstoken des Kontos lesen. Ein
+> eigenes Konto, mit dem nur der Mäher geteilt ist (Tipp oben), begrenzt, was
+> dabei preisgegeben würde.
+
+## Widget, Szenen-Auslöser und -Aktionen (Gladys 5.1)
+
+### Widget „Mammotion-Mäher“
+
+Wähle unter **Dashboard → Bearbeiten → Neues Widget** den Eintrag
+**Mammotion-Mäher** und dann den Mäher. Das Widget zeigt den Status, den Akku,
+den Fortschritt und die verbleibende Zeit des Auftrags sowie die Tasten, die
+gerade sinnvoll sind: **Mähen** (oder **Fortsetzen**), **Pause**, **Zur
+Station**. Es zeigt den zuletzt empfangenen Zustand: Das Öffnen des Dashboards
+sendet nichts an den Mäher.
+
+### Auslöser
+
+| Auslöser                                   | Wann                                                                                   |
+| ------------------------------------------ | -------------------------------------------------------------------------------------- |
+| Ein Mäher beginnt zu mähen                 | Ein neuer Auftrag oder ein pausierter, der fortgesetzt wird                            |
+| Ein Mähauftrag endet                       | Abgeschlossen oder beendet (ein Aufladen mitten im Auftrag beendet ihn nicht)          |
+| Ein Mäher ist zurück in seiner Ladestation | Er beginnt zu laden                                                                    |
+| Ein Mäher hat ein Problem                  | Offline, Positionsfehler, außerhalb der Zone, gesperrt, fehlgeschlagene Aktualisierung |
+
+Jeder löst einmal aus, bei der Änderung, nie beim Neustart der Integration.
+Variablen: Name des Mähers, Status, Akku und je nach Auslöser der Fortschritt,
+„Auftrag zum Aufladen pausiert“ oder das Problem.
+
+### Aktionen
+
+- **Mähen starten**: ein neuer Auftrag mit den in Gladys gewählten Zonen und
+  Einstellungen oder ein pausierter Auftrag, der fortgesetzt wird.
+- **Mähen pausieren**.
+- **Mäher zur Ladestation zurückschicken** (der Auftrag bleibt pausiert).
+- **Mäher auslesen**: Status, online, mäht, Akku, Fortschritt, verbleibende
+  Zeit, Problem. Hake „Zuerst den Mäher abfragen“ an, um einen frischen
+  Wert zu erhalten.
+
+Die ersten drei geben ein **Ergebnis** zurück (`started`, `resumed`,
+`already_mowing`, `already_starting`, `paused`, `not_mowing`, `returning`,
+`already_docked`). Ein neuer Auftrag braucht 30 bis 60 s zum Starten (Zonen,
+Route, dann Start): Ein weiteres „Mähen starten“ in dieser Zeit, aus einer
+Szene, dem Widget oder über den Schalter **Mähen**, startet nichts und
+antwortet `already_starting`.
+
+## Ideen für Szenen
+
+- Jeden Samstag um 10 Uhr mähen, wenn es nicht regnet.
+- Am Samstag „Zu mähende Zone – Vorne“ und „Zu mähende Zone – Seite“
+  einschalten, die anderen aus, dann „Mähen“ einschalten; am Mittwoch alle
+  ausschalten (alle Zonen) und dann „Mähen“ einschalten.
+- Den pausierten Auftrag fortsetzen, wenn der Regen aufhört.
+- Den Mäher zur Ladestation zurückschicken, wenn der Regensensor Regen meldet.
+- Eine Nachricht erhalten, wenn der Mäher ein Problem hat (Auslöser „Ein Mäher
+  hat ein Problem“).
+- Eine Nachricht erhalten, wenn der Mähauftrag endet.
+
+## Fehlerbehebung
+
+- **Keine Listen „Einstellung – …“ am Mäher**: Tab **Entdecken**, Taste
+  **Aktualisieren** beim Mäher.
+- **Kein Schalter „Zu mähende Zone – …“, oder die Karte zeigt „Karte noch
+  nicht gelesen“**: Der Mäher hat seine Karte noch nicht gesendet (aus,
+  offline). Sie wird beim nächsten Start der Integration und bei jedem von
+  Gladys gestarteten Auftrag erneut gelesen. Dann **Aktualisieren** im Tab
+  **Entdecken**.
+- **Die Karte anzeigen**: Tab **Entdecken**, das Gerät „<Mäher> – Karte“
+  hinzufügen, dann auf dem Dashboard ein Widget **Kamera** hinzufügen und
+  dieses Gerät wählen. Das Bild folgt dem Mäher während eines Auftrags
+  (höchstens alle 15 s).
+- **Eine Einstellung der App prüfen**: Starte einen Auftrag in der
+  Mammotion-App und suche dann in den Logs der Integration nach „route
+  settings seen“. Die Zeile zeigt, was die App gesendet hat (`towardMode` =
+  Winkelart, `channelMode` = Mähmuster…).
+
+- **„Mammotion-Cloud nicht erreichbar“**: Prüfe E-Mail-Adresse und
+  Passwort und klicke dann auf **Verbindung testen**.
+- **Kein Mäher gefunden**: Stelle sicher, dass der Mäher in der
+  Mammotion-App mit diesem Konto erscheint (Eigentümer oder geteilt).
+- **Werte ändern sich nicht**: Drücke **Aktualisieren** (auf dem
+  Dashboard) oder **Mäher jetzt aktualisieren** (Tab Konfiguration), was alle
+  Mäher liest und diejenigen nennt, die nicht gelesen werden konnten. Neuere
+  Mäher (Mammotion-Broker) senden ihren Zustand von selbst; Gladys fragt sie
+  höchstens alle 5 Minuten (und direkt nach einem Befehl) nach einem Bericht,
+  um im Kontingent der Mammotion-Cloud zu bleiben und die App auf deinem
+  Telefon nicht abzumelden.
+- **Das Mähen startet nicht**: Lies die Logs. „The mower did not send its
+  zones“: Der Mäher hat nicht geantwortet, versuche es erneut. „Cannot
+  start mowing now“: Der Mäher ist nicht bereit (kehrt zur Ladestation zurück,
+  gesperrt…).
+- **„Der Akkustand von … liegt unter 20 % (aktuell: 0 %)“**, obwohl der Akku
+  voll ist: Das war die alte Funktion **Lädt**, eingeordnet in der Kategorie
+  Akku, die 0 ist, sobald der Mäher nicht lädt. Die neue Funktion **Lädt** ist
+  ein binärer Eingang. Die alte bleibt bei den zuvor hinzugefügten Mähern:
+  Öffne den Tab **Entdecken** und klicke beim Mäher auf
+  **Aktualisieren** — Gladys löscht die Funktionen, die nicht mehr
+  veröffentlicht werden, und die Warnung hört auf.
+- Für Details lies die Logs der Integration mit `LOG_LEVEL=debug`.
