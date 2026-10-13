@@ -88,8 +88,13 @@ const UNITS = {
   start_progress: '%',
 };
 
-const PREFIX = { en: 'Setting', fr: 'Réglage' };
-const ZONE_PREFIX = { en: 'Zone to mow', fr: 'Zone à tondre' };
+const PREFIX = { en: 'Setting', fr: 'Réglage', de: 'Einstellung', es: 'Ajuste' };
+const ZONE_PREFIX = {
+  en: 'Zone to mow',
+  fr: 'Zone à tondre',
+  de: 'Zu mähende Zone',
+  es: 'Zona a cortar',
+};
 const ZONE_FEATURE_PREFIX = 'zone-';
 
 const localized = (text, language) => text?.[language] ?? text?.en ?? '';
@@ -146,8 +151,11 @@ export function settingStep(key) {
   return NUMBER_STEPS[key];
 }
 
+// Languages writing a decimal comma (0,6 m/s).
+const DECIMAL_COMMA = new Set(['fr', 'de', 'es']);
+
 function numberLabel(key, value, language) {
-  const text = language === 'fr' ? String(value).replace('.', ',') : String(value);
+  const text = DECIMAL_COMMA.has(language) ? String(value).replace('.', ',') : String(value);
   return UNITS[key] ? `${text} ${UNITS[key]}` : text;
 }
 

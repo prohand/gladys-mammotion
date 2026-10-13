@@ -37,31 +37,109 @@ export const WORK_MODES = {
 
 // Human readable label of each work mode, shown in the "Status" feature.
 const WORK_MODE_LABELS = {
-  [WORK_MODES.NOT_ACTIVE]: { en: 'Not activated', fr: 'Non activée' },
-  [WORK_MODES.ONLINE]: { en: 'Online', fr: 'En ligne' },
-  [WORK_MODES.OFFLINE]: { en: 'Offline', fr: 'Hors ligne' },
-  [WORK_MODES.DISABLE]: { en: 'Disabled', fr: 'Désactivée' },
-  [WORK_MODES.INITIALIZATION]: { en: 'Starting', fr: 'Démarrage' },
-  [WORK_MODES.READY]: { en: 'Ready', fr: 'Prête' },
-  [WORK_MODES.UNCONNECTED]: { en: 'Not connected', fr: 'Non connectée' },
-  [WORK_MODES.WORKING]: { en: 'Mowing', fr: 'En tonte' },
-  [WORK_MODES.RETURNING]: { en: 'Returning to dock', fr: 'Retour à la base' },
-  [WORK_MODES.CHARGING]: { en: 'Charging', fr: 'En charge' },
-  [WORK_MODES.UPDATING]: { en: 'Updating', fr: 'Mise à jour' },
-  [WORK_MODES.LOCK]: { en: 'Locked', fr: 'Verrouillée' },
-  [WORK_MODES.PAUSE]: { en: 'Paused', fr: 'En pause' },
-  [WORK_MODES.MANUAL_MOWING]: { en: 'Manual mowing', fr: 'Tonte manuelle' },
-  [WORK_MODES.UPDATE_SUCCESS]: { en: 'Update done', fr: 'Mise à jour terminée' },
-  [WORK_MODES.OTA_UPGRADE_FAIL]: { en: 'Update failed', fr: 'Échec de mise à jour' },
-  [WORK_MODES.JOB_DRAW]: { en: 'Mapping', fr: 'Cartographie' },
-  [WORK_MODES.OBSTACLE_DRAW]: { en: 'Mapping obstacles', fr: 'Cartographie obstacles' },
-  [WORK_MODES.CHANNEL_DRAW]: { en: 'Mapping channel', fr: 'Cartographie passage' },
-  [WORK_MODES.ERASER_DRAW]: { en: 'Editing map', fr: 'Édition de carte' },
-  [WORK_MODES.EDIT_BOUNDARY]: { en: 'Editing boundary', fr: 'Édition de bordure' },
-  [WORK_MODES.LOCATION_ERROR]: { en: 'Location error', fr: 'Erreur de position' },
-  [WORK_MODES.BOUNDARY_JUMP]: { en: 'Out of boundary', fr: 'Hors zone' },
-  [WORK_MODES.CHARGING_PAUSE]: { en: 'Charging (job paused)', fr: 'En charge (tâche en pause)' },
+  [WORK_MODES.NOT_ACTIVE]: {
+    en: 'Not activated',
+    fr: 'Non activée',
+    de: 'Nicht aktiviert',
+    es: 'No activado',
+  },
+  [WORK_MODES.ONLINE]: { en: 'Online', fr: 'En ligne', de: 'Online', es: 'En línea' },
+  [WORK_MODES.OFFLINE]: { en: 'Offline', fr: 'Hors ligne', de: 'Offline', es: 'Sin conexión' },
+  [WORK_MODES.DISABLE]: { en: 'Disabled', fr: 'Désactivée', de: 'Deaktiviert', es: 'Desactivado' },
+  [WORK_MODES.INITIALIZATION]: { en: 'Starting', fr: 'Démarrage', de: 'Startet', es: 'Iniciando' },
+  [WORK_MODES.READY]: { en: 'Ready', fr: 'Prête', de: 'Bereit', es: 'Listo' },
+  [WORK_MODES.UNCONNECTED]: {
+    en: 'Not connected',
+    fr: 'Non connectée',
+    de: 'Nicht verbunden',
+    es: 'No conectado',
+  },
+  [WORK_MODES.WORKING]: { en: 'Mowing', fr: 'En tonte', de: 'Mäht', es: 'Cortando' },
+  [WORK_MODES.RETURNING]: {
+    en: 'Returning to dock',
+    fr: 'Retour à la base',
+    de: 'Kehrt zur Ladestation zurück',
+    es: 'Volviendo a la base',
+  },
+  [WORK_MODES.CHARGING]: { en: 'Charging', fr: 'En charge', de: 'Lädt', es: 'Cargando' },
+  [WORK_MODES.UPDATING]: {
+    en: 'Updating',
+    fr: 'Mise à jour',
+    de: 'Wird aktualisiert',
+    es: 'Actualizando',
+  },
+  [WORK_MODES.LOCK]: { en: 'Locked', fr: 'Verrouillée', de: 'Gesperrt', es: 'Bloqueado' },
+  [WORK_MODES.PAUSE]: { en: 'Paused', fr: 'En pause', de: 'Pausiert', es: 'En pausa' },
+  [WORK_MODES.MANUAL_MOWING]: {
+    en: 'Manual mowing',
+    fr: 'Tonte manuelle',
+    de: 'Manuelles Mähen',
+    es: 'Corte manual',
+  },
+  [WORK_MODES.UPDATE_SUCCESS]: {
+    en: 'Update done',
+    fr: 'Mise à jour terminée',
+    de: 'Aktualisierung abgeschlossen',
+    es: 'Actualización completada',
+  },
+  [WORK_MODES.OTA_UPGRADE_FAIL]: {
+    en: 'Update failed',
+    fr: 'Échec de mise à jour',
+    de: 'Aktualisierung fehlgeschlagen',
+    es: 'Error de actualización',
+  },
+  [WORK_MODES.JOB_DRAW]: {
+    en: 'Mapping',
+    fr: 'Cartographie',
+    de: 'Kartierung',
+    es: 'Cartografiando',
+  },
+  [WORK_MODES.OBSTACLE_DRAW]: {
+    en: 'Mapping obstacles',
+    fr: 'Cartographie obstacles',
+    de: 'Kartierung Hindernisse',
+    es: 'Cartografiando obstáculos',
+  },
+  [WORK_MODES.CHANNEL_DRAW]: {
+    en: 'Mapping channel',
+    fr: 'Cartographie passage',
+    de: 'Kartierung Durchgang',
+    es: 'Cartografiando paso',
+  },
+  [WORK_MODES.ERASER_DRAW]: {
+    en: 'Editing map',
+    fr: 'Édition de carte',
+    de: 'Karte wird bearbeitet',
+    es: 'Editando el mapa',
+  },
+  [WORK_MODES.EDIT_BOUNDARY]: {
+    en: 'Editing boundary',
+    fr: 'Édition de bordure',
+    de: 'Grenze wird bearbeitet',
+    es: 'Editando el borde',
+  },
+  [WORK_MODES.LOCATION_ERROR]: {
+    en: 'Location error',
+    fr: 'Erreur de position',
+    de: 'Positionsfehler',
+    es: 'Error de posición',
+  },
+  [WORK_MODES.BOUNDARY_JUMP]: {
+    en: 'Out of boundary',
+    fr: 'Hors zone',
+    de: 'Außerhalb der Zone',
+    es: 'Fuera de zona',
+  },
+  [WORK_MODES.CHARGING_PAUSE]: {
+    en: 'Charging (job paused)',
+    fr: 'En charge (tâche en pause)',
+    de: 'Lädt (Auftrag pausiert)',
+    es: 'Cargando (tarea en pausa)',
+  },
 };
+
+// "State 42": a work mode with no label yet.
+const STATE_WORD = { en: 'State', fr: 'État', de: 'Zustand', es: 'Estado' };
 
 // Work modes where the mower is out mowing (the "Mowing" switch is ON).
 const MOWING_MODES = new Set([WORK_MODES.WORKING, WORK_MODES.MANUAL_MOWING]);
@@ -147,7 +225,7 @@ export function workModeLabel(workMode, online, language = 'en') {
   }
   const labels = WORK_MODE_LABELS[workMode];
   if (!labels) {
-    return workMode === null ? '' : `${language === 'fr' ? 'État' : 'State'} ${workMode}`;
+    return workMode === null ? '' : `${STATE_WORD[language] ?? STATE_WORD.en} ${workMode}`;
   }
   return labels[language] ?? labels.en;
 }

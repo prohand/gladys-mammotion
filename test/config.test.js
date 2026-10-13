@@ -34,7 +34,13 @@ test('poll_frequency is kept within the manifest bounds', () => {
 });
 
 test('an unknown language falls back to French', () => {
-  assert.equal(normalizeConfig({ language: 'de' }).language, 'fr');
+  assert.equal(normalizeConfig({ language: 'it' }).language, 'fr');
+  assert.equal(normalizeConfig({}).language, 'fr');
+});
+
+test('German and Spanish are kept as chosen', () => {
+  assert.equal(normalizeConfig({ language: 'de' }).language, 'de');
+  assert.equal(normalizeConfig({ language: 'es' }).language, 'es');
 });
 
 test('hasCredentials needs both email and password', () => {

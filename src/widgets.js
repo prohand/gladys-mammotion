@@ -19,6 +19,7 @@
 import { WIDGET_BUTTON_STYLES, WIDGET_COLORS } from '@gladysassistant/integration-sdk';
 import { isCharging, isMowing, isPaused, workModeLabel } from './mammotion/telemetry.js';
 import { problemOf, PROBLEMS } from './scenes.js';
+import { LANGUAGES } from './config.js';
 
 export const WIDGET = { MOWER: 'mower' };
 
@@ -31,11 +32,26 @@ export const WIDGET_ACTION = {
 const TTL_SECONDS = 60;
 
 const PROBLEM_TEXT = {
-  [PROBLEMS.OFFLINE]: { en: 'Offline', fr: 'Hors ligne' },
-  [PROBLEMS.LOCATION_ERROR]: { en: 'Location error', fr: 'Erreur de position' },
-  [PROBLEMS.OUT_OF_BOUNDARY]: { en: 'Out of boundary', fr: 'Hors zone' },
-  [PROBLEMS.LOCKED]: { en: 'Locked', fr: 'Verrouillée' },
-  [PROBLEMS.UPDATE_FAILED]: { en: 'Update failed', fr: 'Échec de mise à jour' },
+  [PROBLEMS.OFFLINE]: { en: 'Offline', fr: 'Hors ligne', de: 'Offline', es: 'Sin conexión' },
+  [PROBLEMS.LOCATION_ERROR]: {
+    en: 'Location error',
+    fr: 'Erreur de position',
+    de: 'Positionsfehler',
+    es: 'Error de posición',
+  },
+  [PROBLEMS.OUT_OF_BOUNDARY]: {
+    en: 'Out of boundary',
+    fr: 'Hors zone',
+    de: 'Außerhalb der Zone',
+    es: 'Fuera de zona',
+  },
+  [PROBLEMS.LOCKED]: { en: 'Locked', fr: 'Verrouillée', de: 'Gesperrt', es: 'Bloqueado' },
+  [PROBLEMS.UPDATE_FAILED]: {
+    en: 'Update failed',
+    fr: 'Échec de mise à jour',
+    de: 'Aktualisierung fehlgeschlagen',
+    es: 'Error de actualización',
+  },
 };
 
 /** Cut a text to the bound the core applies, with an ellipsis. */
@@ -46,12 +62,16 @@ function clip(text, length) {
     : `${characters.slice(0, length - 1).join('')}…`;
 }
 
-/** Both languages of a work mode, the core picking the reader's. */
+const UNKNOWN = { en: 'Unknown', fr: 'Inconnu', de: 'Unbekannt', es: 'Desconocido' };
+
+/** Every language of a work mode, the core picking the reader's. */
 function stateText(status) {
-  return {
-    en: clip(workModeLabel(status.workMode, status.online, 'en') || 'Unknown', 40),
-    fr: clip(workModeLabel(status.workMode, status.online, 'fr') || 'Inconnu', 40),
-  };
+  return Object.fromEntries(
+    LANGUAGES.map((language) => [
+      language,
+      clip(workModeLabel(status.workMode, status.online, language) || UNKNOWN[language], 40),
+    ]),
+  );
 }
 
 function stateColor(status) {
@@ -87,6 +107,8 @@ export function buildMowerWidget(name, status) {
       text: {
         en: 'No status from the mower yet: it will show at its next report.',
         fr: 'Pas encore d’état de la tondeuse : il s’affichera à son prochain rapport.',
+        de: 'Noch kein Status vom Mäher: Er erscheint bei seiner nächsten Meldung.',
+        es: 'Aún no hay estado del cortacésped: aparecerá en su próximo informe.',
       },
     });
     return { ttl_seconds: TTL_SECONDS, components };
@@ -96,7 +118,7 @@ export function buildMowerWidget(name, status) {
   if (Number.isFinite(status.battery)) {
     components.push({
       type: 'gauge',
-      label: { en: 'Battery', fr: 'Batterie' },
+      label: { en: 'Battery', fr: 'Batterie', de: 'Akku', es: 'Batería' },
       value: Math.round(status.battery),
       min: 0,
       max: 100,
@@ -107,7 +129,7 @@ export function buildMowerWidget(name, status) {
   if (job && Number.isFinite(status.progressPercent)) {
     components.push({
       type: 'value',
-      label: { en: 'Progress', fr: 'Avancement' },
+      label: { en: 'Progress', fr: 'Avancement', de: 'Fortschritt', es: 'Progreso' },
       value: Math.round(status.progressPercent),
       unit: '%',
       icon: 'trending-up',
@@ -116,7 +138,7 @@ export function buildMowerWidget(name, status) {
   if (job && Number.isFinite(status.remainingMinutes)) {
     components.push({
       type: 'value',
-      label: { en: 'Remaining', fr: 'Restant' },
+      label: { en: 'Remaining', fr: 'Restant', de: 'Verbleibend', es: 'Restante' },
       value: formatMinutes(status.remainingMinutes),
       icon: 'clock',
     });
@@ -124,7 +146,7 @@ export function buildMowerWidget(name, status) {
 
   const items = [
     {
-      label: { en: 'State', fr: 'État' },
+      label: { en: 'State', fr: 'État', de: 'Status', es: 'Estado' },
       value: stateText(status),
       color: stateColor(status),
     },
@@ -132,7 +154,7 @@ export function buildMowerWidget(name, status) {
   const problem = problemOf(status);
   if (problem !== null && problem !== PROBLEMS.OFFLINE) {
     items.push({
-      label: { en: 'Problem', fr: 'Problème' },
+      label: { en: 'Problem', fr: 'Problème', de: 'Problem', es: 'Problema' },
       value: PROBLEM_TEXT[problem],
       color: WIDGET_COLORS.DANGER,
     });
@@ -140,28 +162,42 @@ export function buildMowerWidget(name, status) {
   const charging =
     typeof status.charging === 'boolean' ? status.charging : isCharging(status.workMode);
   items.push({
-    label: { en: 'On the dock', fr: 'Sur la base' },
-    value: charging ? { en: 'Charging', fr: 'En charge' } : { en: 'No', fr: 'Non' },
+    label: { en: 'On the dock', fr: 'Sur la base', de: 'In der Ladestation', es: 'En la base' },
+    value: charging
+      ? { en: 'Charging', fr: 'En charge', de: 'Lädt', es: 'Cargando' }
+      : { en: 'No', fr: 'Non', de: 'Nein', es: 'No' },
   });
   components.push({ type: 'status', items });
 
   if (status.online !== false) {
     if (isMowing(status.workMode)) {
-      components.push(button(WIDGET_ACTION.PAUSE, { en: 'Pause', fr: 'Pause' }, 'pause'));
+      components.push(
+        button(
+          WIDGET_ACTION.PAUSE,
+          { en: 'Pause', fr: 'Pause', de: 'Pause', es: 'Pausa' },
+          'pause',
+        ),
+      );
     } else {
       components.push(
         button(
           WIDGET_ACTION.START,
           isPaused(status.workMode)
-            ? { en: 'Resume', fr: 'Reprendre' }
-            : { en: 'Start mowing', fr: 'Tondre' },
+            ? { en: 'Resume', fr: 'Reprendre', de: 'Fortsetzen', es: 'Reanudar' }
+            : { en: 'Start mowing', fr: 'Tondre', de: 'Mähen', es: 'Cortar' },
           'play',
           WIDGET_BUTTON_STYLES.PRIMARY,
         ),
       );
     }
     if (!isCharging(status.workMode)) {
-      components.push(button(WIDGET_ACTION.DOCK, { en: 'Back to dock', fr: 'Rentrer' }, 'home'));
+      components.push(
+        button(
+          WIDGET_ACTION.DOCK,
+          { en: 'Back to dock', fr: 'Rentrer', de: 'Zur Station', es: 'A la base' },
+          'home',
+        ),
+      );
     }
   }
   return { ttl_seconds: TTL_SECONDS, components };

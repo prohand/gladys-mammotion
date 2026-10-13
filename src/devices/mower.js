@@ -97,21 +97,66 @@ const STARTABLE_MODES = new Set([WORK_MODES.READY, WORK_MODES.INITIALIZATION]);
 
 // Feature names, in the language chosen in the configuration.
 const FEATURE_NAMES = {
-  [FEATURE.MOWING]: { en: 'Mowing', fr: 'Tonte' },
-  [FEATURE.DOCK]: { en: 'Return to dock', fr: 'Retour à la base' },
-  [FEATURE.STATUS]: { en: 'Status', fr: 'État' },
-  [FEATURE.BATTERY]: { en: 'Battery', fr: 'Batterie' },
-  [FEATURE.CHARGING]: { en: 'Charging', fr: 'En charge' },
-  [FEATURE.BLADE_HEIGHT]: { en: 'Blade height', fr: 'Hauteur de coupe' },
-  [FEATURE.REMAINING_TIME]: { en: 'Remaining mowing time', fr: 'Temps de tonte restant' },
-  [FEATURE.PROGRESS]: { en: 'Mowing progress', fr: 'Avancement de la tonte' },
-  [FEATURE.ELAPSED_TIME]: { en: 'Elapsed mowing time', fr: 'Temps de tonte écoulé' },
-  [FEATURE.JOB_AREA]: { en: 'Area to mow', fr: 'Surface à tondre' },
-  [FEATURE.MAP]: { en: 'Map', fr: 'Carte' },
-  [FEATURE.WORK_TIME]: { en: 'Total mowing time', fr: 'Temps de tonte total' },
-  [FEATURE.DISTANCE]: { en: 'Total distance', fr: 'Distance totale' },
-  [FEATURE.REFRESH]: { en: 'Refresh', fr: 'Rafraîchir' },
-  [FEATURE.STOP]: { en: 'Stop job', fr: 'Arrêter la tâche' },
+  [FEATURE.MOWING]: { en: 'Mowing', fr: 'Tonte', de: 'Mähen', es: 'Corte' },
+  [FEATURE.DOCK]: {
+    en: 'Return to dock',
+    fr: 'Retour à la base',
+    de: 'Zurück zur Ladestation',
+    es: 'Volver a la base',
+  },
+  [FEATURE.STATUS]: { en: 'Status', fr: 'État', de: 'Status', es: 'Estado' },
+  [FEATURE.BATTERY]: { en: 'Battery', fr: 'Batterie', de: 'Akku', es: 'Batería' },
+  [FEATURE.CHARGING]: { en: 'Charging', fr: 'En charge', de: 'Lädt', es: 'Cargando' },
+  [FEATURE.BLADE_HEIGHT]: {
+    en: 'Blade height',
+    fr: 'Hauteur de coupe',
+    de: 'Schnitthöhe',
+    es: 'Altura de corte',
+  },
+  [FEATURE.REMAINING_TIME]: {
+    en: 'Remaining mowing time',
+    fr: 'Temps de tonte restant',
+    de: 'Verbleibende Mähzeit',
+    es: 'Tiempo de corte restante',
+  },
+  [FEATURE.PROGRESS]: {
+    en: 'Mowing progress',
+    fr: 'Avancement de la tonte',
+    de: 'Mähfortschritt',
+    es: 'Progreso del corte',
+  },
+  [FEATURE.ELAPSED_TIME]: {
+    en: 'Elapsed mowing time',
+    fr: 'Temps de tonte écoulé',
+    de: 'Vergangene Mähzeit',
+    es: 'Tiempo de corte transcurrido',
+  },
+  [FEATURE.JOB_AREA]: {
+    en: 'Area to mow',
+    fr: 'Surface à tondre',
+    de: 'Zu mähende Fläche',
+    es: 'Superficie a cortar',
+  },
+  [FEATURE.MAP]: { en: 'Map', fr: 'Carte', de: 'Karte', es: 'Mapa' },
+  [FEATURE.WORK_TIME]: {
+    en: 'Total mowing time',
+    fr: 'Temps de tonte total',
+    de: 'Gesamte Mähzeit',
+    es: 'Tiempo de corte total',
+  },
+  [FEATURE.DISTANCE]: {
+    en: 'Total distance',
+    fr: 'Distance totale',
+    de: 'Gesamtstrecke',
+    es: 'Distancia total',
+  },
+  [FEATURE.REFRESH]: { en: 'Refresh', fr: 'Rafraîchir', de: 'Aktualisieren', es: 'Actualizar' },
+  [FEATURE.STOP]: {
+    en: 'Stop job',
+    fr: 'Arrêter la tâche',
+    de: 'Auftrag beenden',
+    es: 'Detener la tarea',
+  },
 };
 
 export function mowerIds(gladys, mower) {

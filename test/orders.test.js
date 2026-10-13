@@ -97,11 +97,28 @@ test('a refused start answers already_starting, with a message', () => {
   assert.equal(orderResult(FEATURE.DOCK, 1, 'dock'), 'returning');
   assert.match(orderMessage('already_starting').en, /already being started/);
   assert.match(orderMessage('already_starting').fr, /déjà en cours de lancement/);
-  assert.deepEqual(orderMessage('whatever'), { en: 'Order sent.', fr: 'Ordre envoyé.' });
+  assert.deepEqual(orderMessage('whatever'), {
+    en: 'Order sent.',
+    fr: 'Ordre envoyé.',
+    de: 'Befehl gesendet.',
+    es: 'Orden enviada.',
+  });
+  for (const result of [
+    'started',
+    'resumed',
+    'already_mowing',
+    'already_starting',
+    'paused',
+    'not_mowing',
+    'returning',
+    'already_docked',
+  ]) {
+    assert.deepEqual(Object.keys(orderMessage(result)), ['en', 'fr', 'de', 'es'], result);
+  }
 });
 
-test('the results of the orders are listed in both docs', () => {
-  for (const lang of ['en', 'fr']) {
+test('the results of the orders are listed in every doc', () => {
+  for (const lang of ['en', 'fr', 'de', 'es']) {
     const doc = readFileSync(new URL(`../docs/${lang}.md`, import.meta.url), 'utf8');
     for (const result of [
       'started',
@@ -129,15 +146,19 @@ test('refreshAll reads every mower even when one fails, and names it', async () 
     (err) => {
       assert.match(err.message, /2\/3 mower\(s\) refreshed, failed: Luba \(timeout\)/);
       assert.match(err.message, /2\/3 tondeuse\(s\) rafraîchie\(s\), en échec : Luba/);
+      assert.match(err.message, /2\/3 Mäher aktualisiert, fehlgeschlagen: Luba/);
+      assert.match(err.message, /2\/3 cortacésped\(es\) actualizado\(s\), con error: Luba/);
       return true;
     },
   );
   assert.deepEqual(read.sort(), ['Luba', 'Mini', 'Yuka']);
 });
 
-test('refreshAll answers in both languages when every mower was read', async () => {
+test('refreshAll answers in every language when every mower was read', async () => {
   assert.deepEqual(await refreshAll([{ name: 'Luba' }], async () => {}), {
     en: '1 mower(s) refreshed.',
     fr: '1 tondeuse(s) rafraîchie(s).',
+    de: '1 Mäher aktualisiert.',
+    es: '1 cortacésped(es) actualizado(s).',
   });
 });

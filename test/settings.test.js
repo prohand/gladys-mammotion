@@ -98,6 +98,15 @@ test('the lists are labeled from the manifest, in the chosen language', () => {
   assert.equal(name(en), 'Setting – Blade height (mm)');
   assert.deepEqual(option('mowing_speed', '0.6')[4], { value: '0.6', label: '0,6 m/s' });
   assert.deepEqual(option('obstacle_detection', 'off')[0], { value: 'off', label: 'Désactivé' });
+  const de = buildMowerDevice(gladys, luba, normalizeConfig({ language: 'de' }));
+  const es = buildMowerDevice(gladys, luba, normalizeConfig({ language: 'es' }));
+  assert.equal(name(de), 'Einstellung – Schnitthöhe (mm)');
+  assert.equal(name(es), 'Ajuste – Altura de corte (mm)');
+  const speed = (language) => settingOptions('mowing_speed', { language, current: '0.6' })[4];
+  assert.deepEqual(speed('de'), { value: '0.6', label: '0,6 m/s' });
+  assert.deepEqual(speed('es'), { value: '0.6', label: '0,6 m/s' });
+  assert.deepEqual(speed('en'), { value: '0.6', label: '0.6 m/s' });
+  assert.equal(settingOptions('obstacle_detection', { language: 'es' })[0].label, 'Desactivada');
 });
 
 test('numeric lists cover the bounds, with exact steps, and keep a value typed in the configuration', () => {

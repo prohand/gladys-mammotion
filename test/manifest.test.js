@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import {
   DEFAULT_CONFIG,
+  LANGUAGES,
   MOWING_BOUNDS,
   normalizeConfig,
   POLL_FREQUENCY_MAX,
@@ -97,4 +98,60 @@ test('every speed of the list is kept as is by the config', () => {
 
 test('the manifest declares the transports used (the mowers are reached through the Mammotion cloud only)', () => {
   assert.deepEqual(manifest.transports, ['cloud']);
+});
+
+// Every text a user reads, in the four languages of the Gladys interface.
+const MANIFEST_LANGUAGES = ['en', 'fr', 'de', 'es'];
+
+/** Every multi-language object of the manifest, with where it sits. */
+function multiLanguageTexts(value, path = '') {
+  if (Array.isArray(value)) {
+    return value.flatMap((item, i) => multiLanguageTexts(item, `${path}[${i}]`));
+  }
+  if (value && typeof value === 'object') {
+    if (typeof value.en === 'string') {
+      return [{ path, text: value }];
+    }
+    return Object.entries(value).flatMap(([key, item]) =>
+      multiLanguageTexts(item, path ? `${path}.${key}` : key),
+    );
+  }
+  return [];
+}
+
+const length = (text) => [...text].length;
+
+test('every text of the manifest is in English, French, German and Spanish', () => {
+  const texts = multiLanguageTexts(manifest);
+  assert.ok(texts.length > 100);
+  for (const { path, text } of texts) {
+    assert.deepEqual(Object.keys(text), MANIFEST_LANGUAGES, path);
+    for (const language of MANIFEST_LANGUAGES) {
+      assert.ok(text[language].trim().length > 0, `${path}.${language}`);
+    }
+  }
+});
+
+test('the texts respect the store length limits in every language', () => {
+  for (const language of MANIFEST_LANGUAGES) {
+    const description = length(manifest.description[language]);
+    assert.ok(description >= 10 && description <= 100, `description.${language}`);
+    for (const widget of manifest.widgets) {
+      const label = length(widget.label[language]);
+      assert.ok(label >= 3 && label <= 30, `widget ${widget.key} label.${language}`);
+      assert.ok(length(widget.description[language]) <= 100, `widget ${widget.key}`);
+    }
+    for (const section of manifest.config_schema.filter((f) => f.type === 'section')) {
+      assert.ok(length(section.description[language]) <= 1000, `section ${section.key}`);
+    }
+  }
+});
+
+test('the status language select offers every language the code speaks', () => {
+  const field = manifest.config_schema.find((f) => f.key === 'language');
+  assert.deepEqual(
+    field.options.map((o) => o.value),
+    LANGUAGES,
+  );
+  assert.ok(LANGUAGES.includes(field.default));
 });

@@ -117,6 +117,8 @@ async function reportDisconnected(err) {
     .setConnectionStatus(false, {
       en: `Mammotion cloud unreachable: ${reason}`.slice(0, 200),
       fr: `Cloud Mammotion injoignable : ${reason}`.slice(0, 200),
+      de: `Mammotion-Cloud nicht erreichbar: ${reason}`.slice(0, 200),
+      es: `Nube de Mammotion inaccesible: ${reason}`.slice(0, 200),
     })
     .catch(() => {});
 }
@@ -225,12 +227,21 @@ function mapView(mower) {
   return { zones, obstacles: map?.obstacles ?? [], mower: position, key };
 }
 
+// Written on the image itself (5 x 7 font, accents dropped): in the language of
+// the device names.
+const MAP_NOT_READ = {
+  en: 'Map not read yet',
+  fr: 'Carte pas encore lue',
+  de: 'Karte noch nicht gelesen',
+  es: 'Mapa aún no leído',
+};
+
 /** Camera image of the map of a mower. */
 function mapImage(view) {
   return toCameraImage(
     renderMap({
       ...view,
-      message: config.language === 'fr' ? 'Carte pas encore lue' : 'Map not read yet',
+      message: MAP_NOT_READ[config.language] ?? MAP_NOT_READ.en,
     }),
   );
 }
@@ -417,6 +428,8 @@ async function initialize() {
     await gladys.setConnectionStatus(false, {
       en: 'Enter the email and password of your Mammotion app account.',
       fr: 'Renseignez l’email et le mot de passe de votre compte Mammotion.',
+      de: 'Geben Sie die E-Mail-Adresse und das Passwort Ihres Kontos der Mammotion-App ein.',
+      es: 'Introduzca el correo electrónico y la contraseña de su cuenta de la aplicación Mammotion.',
     });
     return;
   }
@@ -651,7 +664,9 @@ gladys.onGetImage(async (device) => {
 gladys.onAction('test_connection', async () => {
   if (!hasCredentials(config)) {
     throw new Error(
-      'Enter the email and password first / Renseignez d’abord email et mot de passe',
+      'Enter the email and password first / Renseignez d’abord email et mot de passe / ' +
+        'Geben Sie zuerst E-Mail-Adresse und Passwort ein / ' +
+        'Introduzca primero el correo electrónico y la contraseña',
     );
   }
   const mowers = await refreshMowers();
@@ -660,6 +675,8 @@ gladys.onAction('test_connection', async () => {
   return {
     en: `Connected: ${mowers.length} mower(s) found (${names}).`,
     fr: `Connecté : ${mowers.length} tondeuse(s) trouvée(s) (${names}).`,
+    de: `Verbunden: ${mowers.length} Mäher gefunden (${names}).`,
+    es: `Conectado: ${mowers.length} cortacésped(es) encontrado(s) (${names}).`,
   };
 });
 
@@ -711,6 +728,8 @@ gladys.onWidgetGet(WIDGET.MOWER, async ({ settings } = {}) => {
     return messageContent({
       en: 'Choose a mower in the settings of this widget.',
       fr: 'Choisissez une tondeuse dans les réglages de ce widget.',
+      de: 'Wählen Sie in den Einstellungen dieses Widgets einen Mäher aus.',
+      es: 'Elija un cortacésped en la configuración de este widget.',
     });
   }
   return buildMowerWidget(mower.name, lastStatuses.get(mower.iotId) ?? null);

@@ -34,7 +34,7 @@ manifest with `jq`: run `npm run format` afterwards or CI fails.
 
 ```
 index.js                  SDK wiring + orchestration: polls, commands, pushes, map, settings
-src/config.js             defaults (account, interval, language, next-job settings), clamps
+src/config.js             defaults (account, interval, language fr/en/de/es, next-job settings), clamps
 src/mammotion/http.js     Mammotion cloud HTTP (login, device list)
 src/mammotion/aliyun.js   Aliyun IoT gateway (mowers bound there): auth, invoke, properties
 src/mammotion/mqtt.js     Mammotion broker MQTT (mowers bound there): status pushes, commands
@@ -101,6 +101,6 @@ No network: MQTT and HTTP are faked; protobuf frames and telemetry come from cap
 
 ## Conventions
 
-Prettier formats, ESLint catches mistakes. Comments explain **why**. The README and `docs/fr.md`
-are French, `docs/en.md` English: keep them in sync. The container rootfs is read-only: write
-nothing.
+Prettier formats, ESLint catches mistakes. Comments explain **why**. User-facing text is
+`{ en, fr, de, es }`. The README and `docs/fr.md` are French; `docs/en.md`, `docs/fr.md`,
+`docs/de.md`, `docs/es.md` stay in sync. The container rootfs is read-only: write nothing.

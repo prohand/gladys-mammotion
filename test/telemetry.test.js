@@ -53,7 +53,12 @@ test('parseProperties survives an empty or broken snapshot', () => {
   assert.doesNotThrow(() => parseProperties(null));
 });
 
-test('workModeLabel gives a readable label in both languages', () => {
+test('workModeLabel gives a readable label in every language', () => {
+  assert.equal(workModeLabel(WORK_MODES.WORKING, true, 'de'), 'Mäht');
+  assert.equal(workModeLabel(WORK_MODES.WORKING, true, 'es'), 'Cortando');
+  assert.equal(workModeLabel(99, true, 'de'), 'Zustand 99');
+  assert.equal(workModeLabel(99, true, 'es'), 'Estado 99');
+  assert.equal(workModeLabel(WORK_MODES.WORKING, true, 'it'), 'Mowing');
   assert.equal(workModeLabel(WORK_MODES.WORKING, true, 'fr'), 'En tonte');
   assert.equal(workModeLabel(WORK_MODES.WORKING, true, 'en'), 'Mowing');
   assert.equal(workModeLabel(WORK_MODES.WORKING, false, 'fr'), 'Hors ligne');
