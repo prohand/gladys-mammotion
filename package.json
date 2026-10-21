@@ -18,7 +18,7 @@
   "dependencies": {
     "@gladysassistant/integration-sdk": "^0.15.0",
     "jpeg-js": "^0.4.4",
-    "mqtt": "^5.16.0"
+    "mqtt": "^5.16.1"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
