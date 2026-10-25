@@ -4,6 +4,8 @@ Control your Mammotion robot lawn mower (Luba, Luba 2, Luba mini, Yuka…) from
 Gladys: start mowing, pause and resume, send the mower back to its dock, and
 follow its battery, status and mowing progress.
 
+Requires **Gladys 5.3.0** or later.
+
 ## What you get
 
 Each mower of your Mammotion account shows up with:

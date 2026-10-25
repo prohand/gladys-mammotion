@@ -4,6 +4,8 @@ Steuere deinen Mammotion-Mähroboter (Luba, Luba 2, Luba mini, Yuka…) über
 Gladys: Mähen starten, pausieren und fortsetzen, den Mäher zur Ladestation
 zurückschicken und Akku, Status und Mähfortschritt verfolgen.
 
+Erfordert **Gladys 5.3.0** oder neuer.
+
 ## Was du erhältst
 
 Jeder Mäher deines Mammotion-Kontos erscheint mit:

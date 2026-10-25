@@ -73,15 +73,20 @@ src/orders.js             job-start guard, order results/messages, "Refresh the 
   PyMammotion do); the risk is documented in `mqtt.js` and the user docs.
 - **Polling**: Gladys `poll_frequency` is an enum in ms (1 s–60 s, any other value rejects the
   whole discovery); `devicePollFrequency()` picks the tick and `onPoll` skips calls inside the
-  configured interval. Devices carry `should_poll: true` (without it Gladys never polls them;
-  the flag is read at creation only), and index.js runs its own one-minute loop over the
-  created mowers; both paths go through `pollMowerIfDue()`.
+  configured interval. Devices carry `should_poll: true` (a core before 5.3 never polls them
+  without it, 5.3 sets it from `poll_frequency`; the flag is read at creation only), and
+  index.js runs its own one-minute loop over the created mowers; both paths go through
+  `pollMowerIfDue()`.
+- **States go through `publishChangedStates`** (30-minute heartbeat, `publishMowerStates`): a
+  mowing mower pushes every 15 s and Gladys takes 300 states a minute. A command shows its
+  order with `publishCommandState`, which forgets that feature so the next read publishes the
+  truth; `connected` forgets everything.
 - **No fake values**: the 0 % battery a mower reports while asleep is not published (it fired
   false low-battery alerts).
 - **The map is a camera image** refreshed by a keep-alive timer so Gladys never shows it stale.
 - **Every feature declares `min`/`max`** (NOT NULL in Gladys); text states go in the `text` field.
 - The account password and tokens are secrets: never log them.
-- **Gladys 5.1 capabilities** (`gladys_version >=5.1.0`): the widget and `get_mower_status`
+- **Gladys 5.1 capabilities** (`gladys_version >=5.3.0` today, for the catalog `keywords`): the widget and `get_mower_status`
   answer from the last status in memory (`lastStatuses`), never from a message to the mower.
   Scene triggers are transitions computed by `MowerEventTracker` on every status (poll or
   push): the first status after a start only records, an unknown work mode moves nothing, and
@@ -92,7 +97,8 @@ src/orders.js             job-start guard, order results/messages, "Refresh the 
 ### Manifest
 
 `test/manifest.test.js` keeps `gladys-assistant-integration.json` in sync with `DEFAULT_CONFIG`,
-the bounds and the select options.
+the bounds and the select options, and pins the store rules: categories in the store
+vocabulary, `keywords` shape, no `countries` (sold worldwide), `gladys_version >=5.3.0`.
 
 ## Testing
 

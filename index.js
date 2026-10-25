@@ -312,15 +312,33 @@ function readZonesOnce(mowers) {
   }
 }
 
+// Gladys takes 300 states a minute per integration and keeps a history row per
+// state, while a mowing mower pushes every 15 s and most of its values do not
+// move: only what changed goes out, plus every value each STATE_HEARTBEAT_MS so
+// a stable one never looks stale. The SDK forgets a device's values when Gladys
+// creates, updates or deletes it; `connected` forgets them all.
+const STATE_HEARTBEAT_MS = 30 * 60_000;
+
+async function publishMowerStates(states) {
+  if (states.length > 0) {
+    await gladys.publishChangedStates(states, { heartbeat: STATE_HEARTBEAT_MS });
+  }
+}
+
+// A command shows its order at once, outside that memory: forget the feature
+// afterwards, so the next read publishes what the mower really does, even when
+// it is the value the memory last held (an order the mower did not follow).
+async function publishCommandState(featureId, value) {
+  await gladys.publishState(featureId, value);
+  gladys.forgetPublishedStates(featureId);
+}
+
 async function pollMower(mower, { force = false } = {}) {
   lastPollAt.set(mower.iotId, Date.now());
   const status = await getClient().getStatus(mower, { force });
   rememberWorkMode(mower, status.workMode);
   logger.debug(`${mower.name}: ${JSON.stringify(status)}`);
-  const states = buildMowerStates(gladys, mower, status, config);
-  if (states.length > 0) {
-    await gladys.publishStates(states);
-  }
+  await publishMowerStates(buildMowerStates(gladys, mower, status, config));
   await afterStatus(mower, status);
 }
 
@@ -398,10 +416,7 @@ async function publishPushedState(iotId) {
     return;
   }
   rememberWorkMode(mower, status.workMode);
-  const states = buildMowerStates(gladys, mower, status, config);
-  if (states.length > 0) {
-    await gladys.publishStates(states);
-  }
+  await publishMowerStates(buildMowerStates(gladys, mower, status, config));
   await afterStatus(mower, status);
 }
 
@@ -490,9 +505,10 @@ async function pollMowerIfDue(mower) {
   }
 }
 
-// The integration's own refresh loop. Gladys only polls a device whose row
-// carries `should_poll: true`, a flag it reads once at creation: every mower
-// added before the flag was published would never be polled again.
+// The integration's own refresh loop. A Gladys core before 5.3 only polls a
+// device whose row carries `should_poll: true`, a flag it reads once at
+// creation: every mower added before the flag was published would never be
+// polled again (5.3 sets it from `poll_frequency`, but only at creation too).
 const OWN_POLL_LOOP_MS = 60_000;
 let ownPollRunning = false;
 const ownPollLoop = setInterval(async () => {
@@ -561,7 +577,7 @@ async function controlMower(mower, key, value, featureId) {
   } catch (err) {
     logger.warn(`${mower.name}: ${err.message}`);
     // Put the switch back: the order was not sent.
-    await gladys.publishState(featureId, on ? 0 : 1).catch(() => {});
+    await publishCommandState(featureId, on ? 0 : 1).catch(() => {});
     throw err;
   }
   logger.info(
@@ -569,7 +585,7 @@ async function controlMower(mower, key, value, featureId) {
   );
   if (!command) {
     // A push button (Stop job) has no state to put back.
-    if (key !== FEATURE.STOP) await gladys.publishState(featureId, on);
+    if (key !== FEATURE.STOP) await publishCommandState(featureId, on);
     return command;
   }
   if (command === 'refresh') {
@@ -585,7 +601,7 @@ async function controlMower(mower, key, value, featureId) {
     // mower still says "ready" while its route is planned). The switch shows
     // the order at once, and the job only starts once Gladys has that state,
     // so a quick failure putting it back to 0 cannot arrive first.
-    const switchOn = gladys.publishState(featureId, 1);
+    const switchOn = publishCommandState(featureId, 1);
     const started = jobStarts.launch(
       mower.iotId,
       async () => {
@@ -602,7 +618,7 @@ async function controlMower(mower, key, value, featureId) {
         },
         onFailed: async (err) => {
           logger.warn(`${mower.name}: new job not started: ${err.message}`);
-          await gladys.publishState(featureId, 0).catch(() => {});
+          await publishCommandState(featureId, 0).catch(() => {});
         },
       },
     );
@@ -628,7 +644,7 @@ async function controlMower(mower, key, value, featureId) {
     rememberWorkMode(mower, WORK_MODES.PAUSE);
   }
   // The mower accepted the order: reflect it now, the refresh confirms it.
-  await gladys.publishState(featureId, on);
+  await publishCommandState(featureId, on);
   scheduleRefresh(mower);
   return command;
 }
@@ -768,6 +784,9 @@ gladys.onConfigUpdated(async (newConfig) => {
 
 // --- Connection lifecycle ----------------------------------------------------
 gladys.on('connected', async () => {
+  // Gladys may have restarted, or lost values while the socket was down: the
+  // next reads publish every state again instead of only the changes.
+  gladys.forgetPublishedStates();
   try {
     config = normalizeConfig(await gladys.getConfig());
     await initialize();

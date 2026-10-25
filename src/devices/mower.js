@@ -185,10 +185,11 @@ export function buildMowerDevice(gladys, mower, config) {
     // Gladys calls onPoll for this device at this interval. It must be one of
     // the values Gladys accepts, in milliseconds (see devicePollFrequency).
     poll_frequency: devicePollFrequency(config.poll_frequency),
-    // Gladys only schedules a device that also asks for it (`should_poll` is
-    // false by default in the core); without it onPoll was never called and
-    // an Aliyun mower (no push) kept its first values. The flag is read at
-    // creation only: index.js covers older devices with its own loop.
+    // A core before 5.3 only schedules a device that also asks for it
+    // (`should_poll` false by default); without it onPoll was never called and
+    // an Aliyun mower (no push) kept its first values. Gladys 5.3 sets it from
+    // `poll_frequency`; the flag stays for the devices created before. It is
+    // read at creation only: index.js covers older devices with its own loop.
     should_poll: true,
     features: [
       {

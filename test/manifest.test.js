@@ -36,6 +36,77 @@ test('declaring catalog categories requires Gladys >= 4.86.0', () => {
   assert.ok(major > 4 || (major === 4 && minor >= 86));
 });
 
+// The store vocabulary of catalog shelves (an unknown key is silently dropped).
+const CATEGORIES = [
+  'climate',
+  'lighting',
+  'energy',
+  'security',
+  'multimedia',
+  'appliances',
+  'environment',
+  'protocols',
+  'network',
+  'notifications',
+  'assistants',
+  'services',
+  'transport',
+  'vehicles',
+  'servers',
+  'leisure',
+];
+
+function minGladysVersion() {
+  const match = manifest.gladys_version.match(/>=\s*(\d+)\.(\d+)\.(\d+)/);
+  assert.ok(match, 'gladys_version must declare a minimum version');
+  return match.slice(1).map(Number);
+}
+
+function isAtLeast(version, required) {
+  for (let i = 0; i < required.length; i += 1) {
+    if (version[i] !== required[i]) {
+      return version[i] > required[i];
+    }
+  }
+  return true;
+}
+
+test('categories are unique keys of the store vocabulary', () => {
+  assert.equal(new Set(manifest.categories).size, manifest.categories.length);
+  for (const category of manifest.categories) {
+    assert.ok(CATEGORIES.includes(category), `unknown category "${category}"`);
+  }
+});
+
+test('widgets, scene triggers and scene actions require Gladys >= 5.1.0', () => {
+  if (manifest.widgets || manifest.scene_triggers || manifest.scene_actions) {
+    assert.ok(isAtLeast(minGladysVersion(), [5, 1, 0]));
+  }
+});
+
+test('keywords are 1 to 10 unique search terms of 2 to 30 characters', () => {
+  assert.ok(Array.isArray(manifest.keywords));
+  assert.ok(manifest.keywords.length >= 1 && manifest.keywords.length <= 10);
+  const seen = new Set();
+  for (const keyword of manifest.keywords) {
+    const normalized = keyword.trim().toLowerCase();
+    assert.ok(normalized.length >= 2 && normalized.length <= 30, `keyword "${keyword}"`);
+    assert.ok(!seen.has(normalized), `duplicate keyword "${keyword}"`);
+    seen.add(normalized);
+  }
+});
+
+test('the mowers are sold worldwide: no countries restriction', () => {
+  assert.equal(manifest.countries, undefined);
+});
+
+test('keywords, countries and music require Gladys >= 5.3.0', () => {
+  if (manifest.keywords || manifest.countries || manifest.music) {
+    assert.ok(isAtLeast(minGladysVersion(), [5, 3, 0]), 'keywords / countries / music need 5.3.0');
+  }
+  assert.ok(isAtLeast(minGladysVersion(), [5, 3, 0]));
+});
+
 test('config_schema defaults stay consistent with DEFAULT_CONFIG', () => {
   for (const field of manifest.config_schema) {
     if (field.default !== undefined) {
