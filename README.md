@@ -5,6 +5,8 @@ robots tondeuses **Mammotion** (Luba, Luba 2, Luba mini, Yuka…), construite su
 le [template officiel](https://github.com/GladysAssistant/integration-template-js)
 et le SDK [`@gladysassistant/integration-sdk`](https://github.com/GladysAssistant/integration-sdk-js).
 
+Nécessite **Gladys 5.3.0** ou plus récent.
+
 ## Fonctionnalités
 
 Chaque tondeuse du compte Mammotion devient un appareil Gladys avec :
@@ -172,7 +174,9 @@ npm test               # tests unitaires (node --test)
 2. **Actions → Release → Run workflow** : le workflow monte la version
    (`package.json` + manifeste), crée le tag et publie l'image Docker
    multi-arch sur `ghcr.io/prohand/gladys-mammotion`.
-3. Vérifier avant publication : `npx github:GladysAssistant/integration-store .`
+3. Vérifier avant publication : `npx github:GladysAssistant/integration-store --skip-image-check .`
+   (la CI le fait sur chaque pull request ; le workflow Release relance la vérification
+   complète, image comprise, une fois l'image publiée).
 
 ## Licence
 

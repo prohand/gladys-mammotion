@@ -5,6 +5,8 @@ desde Gladys: inicie el corte, póngalo en pausa y reanúdelo, envíe el
 cortacésped de vuelta a su base y siga su batería, su estado y el progreso
 del corte.
 
+Requiere **Gladys 5.3.0** o posterior.
+
 ## Qué obtiene
 
 Cada cortacésped de su cuenta Mammotion aparece con:

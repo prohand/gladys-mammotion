@@ -6,6 +6,18 @@ All notable changes to this integration are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- `@gladysassistant/integration-sdk` updated to 0.16.0.
+- Gladys 5.3.0 or later is now required.
+- Polls and broker pushes only send the states that changed (and every value again every
+  30 minutes), to stay well under the 300 states per minute Gladys accepts and keep the
+  history small.
+
+### Added
+
+- Search keywords for the Gladys catalog (Luba 2, Luba mini, Yuka mini, robotic lawn mower…).
+
 ## [1.5.1] - 2026-10-23
 
 ### Security

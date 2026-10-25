@@ -4,6 +4,8 @@ Pilotez votre robot tondeuse Mammotion (Luba, Luba 2, Luba mini, Yuka…) depuis
 Gladys : lancer une tonte, la mettre en pause et la reprendre, renvoyer la
 tondeuse à sa base, et suivre sa batterie, son état et l'avancement de la tonte.
 
+Nécessite **Gladys 5.3.0** ou plus récent.
+
 ## Ce que vous obtenez
 
 Chaque tondeuse de votre compte Mammotion apparaît avec :
