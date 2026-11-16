@@ -6,6 +6,10 @@ All notable changes to this integration are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.6.4] - 2026-11-16
+
+- Maintenance release, no functional change.
+
 ## [1.6.3] - 2026-11-16
 
 - Update `@gladysassistant/integration-sdk` to 0.16.1 (security update).
@@ -229,7 +233,8 @@ First public release.
 
 - Register Build and Release workflows on main
 
-[Unreleased]: https://github.com/prohand/gladys-mammotion/compare/v1.6.3...HEAD
+[Unreleased]: https://github.com/prohand/gladys-mammotion/compare/v1.6.4...HEAD
+[1.6.4]: https://github.com/prohand/gladys-mammotion/compare/v1.6.3...v1.6.4
 [1.6.3]: https://github.com/prohand/gladys-mammotion/compare/v1.6.2...v1.6.3
 [1.6.2]: https://github.com/prohand/gladys-mammotion/compare/v1.6.1...v1.6.2
 [1.6.1]: https://github.com/prohand/gladys-mammotion/compare/v1.6.0...v1.6.1
